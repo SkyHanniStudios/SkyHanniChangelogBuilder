@@ -31,26 +31,27 @@ fun getTextFromUrl(urlString: String): List<String> {
 }
 
 fun main() {
-    val firstPr = 1071
+    val firstPr = 1106
     val hideWhenError = true
+    val title = "Version 0.24 Beta 5"
 
-    println(" ")
+    println("")
     val url =
         "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=50"
     val data = getTextFromUrl(url).joinToString("")
     val gson = GsonBuilder().create()
     val fromJson = gson.fromJson(data, JsonArray::class.java)
     val prs = fromJson.map { gson.fromJson(it, PullRequest::class.java) }
-    readPrs(prs, firstPr, hideWhenError)
+    readPrs(prs, firstPr, hideWhenError, title)
 }
 
-fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean) {
+fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title: String) {
     val categories = mutableListOf<Category>()
     val allChanges = mutableListOf<Change>()
     findAllChanges(prs, allChanges, categories, firstPr, hideWhenError)
 
     for (type in OutputType.entries) {
-        print(categories, allChanges, type)
+        print(categories, allChanges, type, title)
     }
 }
 
@@ -64,16 +65,18 @@ private fun print(
     categories: MutableList<Category>,
     allChanges: MutableList<Change>,
     outputType: OutputType,
+    title: String,
 ) {
     val extraInfoPrefix = when (outputType) {
         OutputType.DISCORD_PUBLIC -> " = "
         OutputType.GITHUB -> "   * "
         OutputType.DISCORD_INTERNAL -> "       "
     }
-    println(" ")
-    println(" ")
+    println("")
+    println("")
     println("outputType: $outputType")
-    println(" ")
+    println("")
+    println("## $title")
     for (category in allowedCategories.map { getCategory(categories, it) }) {
         if (outputType == OutputType.DISCORD_PUBLIC && category.name == "Technical Details") continue
         val changes = allChanges.filter { it.category == category }
