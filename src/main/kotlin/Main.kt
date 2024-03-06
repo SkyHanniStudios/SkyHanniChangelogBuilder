@@ -106,7 +106,7 @@ private fun print(
 fun getChangePrefix(name: String, outputType: OutputType): String {
     return when (outputType) {
         OutputType.DISCORD_INTERNAL -> "- "
-        OutputType.GITHUB -> " + "
+        OutputType.GITHUB -> "+ "
         OutputType.DISCORD_PUBLIC -> when (name) {
             "New Features" -> "+ "
             "Improvements" -> "+ "
