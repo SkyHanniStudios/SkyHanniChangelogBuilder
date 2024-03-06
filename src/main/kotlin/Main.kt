@@ -70,7 +70,7 @@ private fun print(
     val extraInfoPrefix = when (outputType) {
         OutputType.DISCORD_PUBLIC -> " = "
         OutputType.GITHUB -> "   * "
-        OutputType.DISCORD_INTERNAL -> "       "
+        OutputType.DISCORD_INTERNAL -> " - "
     }
     println("")
     println("")
@@ -105,7 +105,7 @@ private fun print(
 
 fun getChangePrefix(name: String, outputType: OutputType): String {
     return when (outputType) {
-        OutputType.DISCORD_INTERNAL -> "    "
+        OutputType.DISCORD_INTERNAL -> "- "
         OutputType.GITHUB -> " + "
         OutputType.DISCORD_PUBLIC -> when (name) {
             "New Features" -> "+ "
