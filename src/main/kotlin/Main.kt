@@ -124,10 +124,10 @@ private fun print(
         OutputType.GITHUB -> "   * "
         OutputType.DISCORD_INTERNAL -> " - "
     }
+    val border = "================================================================================="
     println("")
-    println("")
-    println("outputType: $outputType")
-    println("")
+    println("outputType ${outputType.name.lowercase()}:")
+    println(border)
     println("## $title")
     for (category in allowedCategories.map { getCategory(categories, it) }) {
         if (outputType == OutputType.DISCORD_PUBLIC && category.name == "Technical Details") continue
@@ -153,6 +153,7 @@ private fun print(
             println("```")
         }
     }
+    println(border)
 }
 
 fun getChangePrefix(name: String, outputType: OutputType): String = when (outputType) {
