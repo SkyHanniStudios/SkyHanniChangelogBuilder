@@ -13,7 +13,7 @@ val allowedCategories = listOf("New Features", "Improvements", "Fixes", "Technic
 
 val categoryPattern = "## Changelog (?<category>.*)".toPattern()
 val changePattern = "\\+ (?<text>.*) - (?<author>.*)".toPattern()
-val extraInfoPattern = " {2}\\* (?<text>.*)".toPattern()
+val extraInfoPattern = " {4}\\* (?<text>.*)".toPattern()
 val illegalStartPattern = "^[-=*+ ].*".toPattern()
 
 fun getTextFromUrl(urlString: String): List<String> {
@@ -31,25 +31,37 @@ fun getTextFromUrl(urlString: String): List<String> {
     return text
 }
 
+enum class WhatToDo {
+    NEXT_BETA, OPEN_PRS,
+    ;
+}
+
 fun main() {
     val firstPr = 1112
     val hideWhenError = true
     val title = "Version 0.24 Beta 6"
 
+    val whatToDo = WhatToDo.NEXT_BETA
+
     println("")
-    val url =
-        "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=50"
+
+    @Suppress("KotlinConstantConditions")
+    val url = when (whatToDo) {
+        WhatToDo.NEXT_BETA -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=50"
+        WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=20"
+    }
+
     val data = getTextFromUrl(url).joinToString("")
     val gson = GsonBuilder().create()
     val fromJson = gson.fromJson(data, JsonArray::class.java)
     val prs = fromJson.map { gson.fromJson(it, PullRequest::class.java) }
-    readPrs(prs, firstPr, hideWhenError, title)
+    readPrs(prs, firstPr, hideWhenError, title, whatToDo)
 }
 
-fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title: String) {
+fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title: String, whatToDo: WhatToDo) {
     val categories = mutableListOf<Category>()
     val allChanges = mutableListOf<Change>()
-    findAllChanges(prs, allChanges, categories, firstPr, hideWhenError)
+    findAllChanges(prs, allChanges, categories, firstPr, hideWhenError, whatToDo)
 
     for (type in OutputType.entries) {
         print(categories, allChanges, type, title)
@@ -120,15 +132,23 @@ private fun findAllChanges(
     categories: MutableList<Category>,
     firstPr: Int,
     hideWhenError: Boolean,
+    whatToDo: WhatToDo,
 ) {
     var errors = 0
     var done = 0
-
     // TODO find better solution for this sorting logic
-    val filtered = prs.filter { it.closedAt != null }
-        .map { it to Long.MAX_VALUE - Instant.parse(it.closedAt).toEpochMilli() }
+    val filtered = when (whatToDo) {
+        WhatToDo.NEXT_BETA -> prs.filter { it.mergedAt != null }
+            .map { it to it.mergedAt }
+
+        WhatToDo.OPEN_PRS -> prs
+            .map { it to it.updatedAt }
+
+    }
+        .map { it.first to Long.MAX_VALUE - Instant.parse(it.second).toEpochMilli() }
         .sortedBy { it.second }
         .map { it.first }
+
     for (pr in filtered) {
         val number = pr.number
         val prLink = pr.htmlUrl
@@ -144,7 +164,9 @@ private fun findAllChanges(
             println(t.message)
             errors++
         }
-        if (number == firstPr) break
+        if (whatToDo == WhatToDo.NEXT_BETA) {
+            if (number == firstPr) break
+        }
     }
     println("")
     println("found $errors errors")
