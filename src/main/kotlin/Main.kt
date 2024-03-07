@@ -61,10 +61,51 @@ fun main() {
 fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title: String, whatToDo: WhatToDo) {
     val categories = mutableListOf<Category>()
     val allChanges = mutableListOf<Change>()
-    findAllChanges(prs, allChanges, categories, firstPr, hideWhenError, whatToDo)
+    var errors = 0
+    var done = 0
+    // TODO find better solution for this sorting logic
+    val filtered = when (whatToDo) {
+        WhatToDo.NEXT_BETA -> prs.filter { it.mergedAt != null }
+            .map { it to it.mergedAt }
+
+        WhatToDo.OPEN_PRS -> prs
+            .map { it to it.updatedAt }
+
+    }
+        .map { it.first to Long.MAX_VALUE - Instant.parse(it.second).toEpochMilli() }
+        .sortedBy { it.second }
+        .map { it.first }
+    for (pr in filtered) {
+        val number = pr.number
+        val prLink = pr.htmlUrl
+        val body = pr.body
+
+        val description = body?.split(System.lineSeparator()) ?: emptyList()
+        try {
+            allChanges.addAll(parseChanges(description, prLink, categories))
+            done++
+        } catch (t: Throwable) {
+            println("")
+            println("Error in #$number ($prLink)")
+            println(t.message)
+            errors++
+        }
+        if (whatToDo == WhatToDo.NEXT_BETA) {
+            if (number == firstPr) break
+        }
+    }
+    println("")
 
     for (type in OutputType.entries) {
         print(categories, allChanges, type, title)
+    }
+    println("")
+    println("Found $errors PRs with errors")
+    println("Loaded $done PRs correctly")
+    if (errors > 0) {
+        if (hideWhenError) {
+            exitProcess(-1)
+        }
     }
 }
 
@@ -123,58 +164,6 @@ fun getChangePrefix(name: String, outputType: OutputType): String = when (output
         "Fixes" -> "~ "
         "Removed Features" -> "- "
         else -> error("impossible change prefix")
-    }
-}
-
-private fun findAllChanges(
-    prs: List<PullRequest>,
-    changes: MutableList<Change>,
-    categories: MutableList<Category>,
-    firstPr: Int,
-    hideWhenError: Boolean,
-    whatToDo: WhatToDo,
-) {
-    var errors = 0
-    var done = 0
-    // TODO find better solution for this sorting logic
-    val filtered = when (whatToDo) {
-        WhatToDo.NEXT_BETA -> prs.filter { it.mergedAt != null }
-            .map { it to it.mergedAt }
-
-        WhatToDo.OPEN_PRS -> prs
-            .map { it to it.updatedAt }
-
-    }
-        .map { it.first to Long.MAX_VALUE - Instant.parse(it.second).toEpochMilli() }
-        .sortedBy { it.second }
-        .map { it.first }
-
-    for (pr in filtered) {
-        val number = pr.number
-        val prLink = pr.htmlUrl
-        val body = pr.body
-
-        val description = body?.split(System.lineSeparator()) ?: emptyList()
-        try {
-            changes.addAll(parseChanges(description, prLink, categories))
-            done++
-        } catch (t: Throwable) {
-            println("")
-            println("Error in #$number ($prLink)")
-            println(t.message)
-            errors++
-        }
-        if (whatToDo == WhatToDo.NEXT_BETA) {
-            if (number == firstPr) break
-        }
-    }
-    println("")
-    println("Found $errors PRs with errors")
-    println("Loaded $done PRs correctly")
-    if (errors > 0) {
-        if (hideWhenError) {
-            exitProcess(-1)
-        }
     }
 }
 
