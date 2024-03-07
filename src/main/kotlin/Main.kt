@@ -57,9 +57,7 @@ fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title:
 }
 
 enum class OutputType {
-    DISCORD_INTERNAL,
-    GITHUB,
-    DISCORD_PUBLIC,
+    DISCORD_INTERNAL, GITHUB, DISCORD_PUBLIC,
 }
 
 private fun print(
@@ -104,17 +102,15 @@ private fun print(
     }
 }
 
-fun getChangePrefix(name: String, outputType: OutputType): String {
-    return when (outputType) {
-        OutputType.DISCORD_INTERNAL -> "- "
-        OutputType.GITHUB -> "+ "
-        OutputType.DISCORD_PUBLIC -> when (name) {
-            "New Features" -> "+ "
-            "Improvements" -> "+ "
-            "Fixes" -> "~ "
-            "Removed Features" -> "- "
-            else -> error("impossible change prefix")
-        }
+fun getChangePrefix(name: String, outputType: OutputType): String = when (outputType) {
+    OutputType.DISCORD_INTERNAL -> "- "
+    OutputType.GITHUB -> "+ "
+    OutputType.DISCORD_PUBLIC -> when (name) {
+        "New Features" -> "+ "
+        "Improvements" -> "+ "
+        "Fixes" -> "~ "
+        "Removed Features" -> "- "
+        else -> error("impossible change prefix")
     }
 }
 
@@ -129,9 +125,11 @@ private fun findAllChanges(
     var done = 0
 
     // TODO find better solution for this sorting logic
-    for (pr in prs.filter { it.closedAt != null }
+    val filtered = prs.filter { it.closedAt != null }
         .map { it to Long.MAX_VALUE - Instant.parse(it.closedAt).toEpochMilli() }
-        .sortedBy { it.second }.map { it.first }) {
+        .sortedBy { it.second }
+        .map { it.first }
+    for (pr in filtered) {
         val number = pr.number
         val prLink = pr.htmlUrl
         val body = pr.body
