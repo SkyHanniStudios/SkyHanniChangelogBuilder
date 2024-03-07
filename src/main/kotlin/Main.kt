@@ -169,13 +169,13 @@ private fun findAllChanges(
         }
     }
     println("")
-    println("found $errors errors")
+    println("Found $errors PRs with errors")
+    println("Loaded $done PRs correctly")
     if (errors > 0) {
         if (hideWhenError) {
             exitProcess(-1)
         }
     }
-    println("Loaded $done PRs")
 }
 
 inline fun <T> Pattern.matchMatcher(text: String, consumer: Matcher.() -> T) =
