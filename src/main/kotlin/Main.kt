@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 
 import java.net.URL
+import java.time.Instant
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.system.exitProcess
@@ -31,9 +32,9 @@ fun getTextFromUrl(urlString: String): List<String> {
 }
 
 fun main() {
-    val firstPr = 1106
+    val firstPr = 1112
     val hideWhenError = true
-    val title = "Version 0.24 Beta 5"
+    val title = "Version 0.24 Beta 6"
 
     println("")
     val url =
@@ -126,12 +127,14 @@ private fun findAllChanges(
 ) {
     var errors = 0
     var done = 0
-    for (pr in prs) {
+
+    // TODO find better solution for this sorting logic
+    for (pr in prs.filter { it.closedAt != null }
+        .map { it to Long.MAX_VALUE - Instant.parse(it.closedAt).toEpochMilli() }
+        .sortedBy { it.second }.map { it.first }) {
         val number = pr.number
         val prLink = pr.htmlUrl
         val body = pr.body
-        val merged = pr.mergedAt != null
-        if (!merged) continue
 
         val description = body?.split(System.lineSeparator()) ?: emptyList()
         try {
