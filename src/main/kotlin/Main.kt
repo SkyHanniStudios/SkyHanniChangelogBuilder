@@ -191,6 +191,9 @@ fun parseChanges(
 
         changePattern.matchMatcher(line) {
             val author = group("author")
+            if (author == "your_name_here") {
+                error("no author name")
+            }
             val text = group("text")
             if (illegalStartPattern.matcher(text).matches()) {
                 error("illegal start at change: '$text'")
