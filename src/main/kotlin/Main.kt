@@ -124,18 +124,36 @@ private fun print(
         OutputType.GITHUB -> "   * "
         OutputType.DISCORD_INTERNAL -> " - "
     }
+    val list = createPrint(categories, outputType, allChanges, extraInfoPrefix)
     val border = "================================================================================="
     println("")
     println("outputType ${outputType.name.lowercase()}:")
+    val totalLength = list.sumOf { it.length }
+    if (outputType != OutputType.GITHUB) {
+        println("$totalLength/2000 characters used")
+    }
     println(border)
     println("## $title")
+    for (line in list) {
+        println(line)
+    }
+    println(border)
+}
+
+private fun createPrint(
+    categories: MutableList<Category>,
+    outputType: OutputType,
+    allChanges: MutableList<Change>,
+    extraInfoPrefix: String,
+): MutableList<String> {
+    val list = mutableListOf<String>()
     for (category in allowedCategories.map { getCategory(categories, it) }) {
         if (outputType == OutputType.DISCORD_PUBLIC && category.name == "Technical Details") continue
         val changes = allChanges.filter { it.category == category }
         if (changes.isEmpty()) continue
-        println("### " + category.name)
+        list.add("### " + category.name)
         if (outputType == OutputType.DISCORD_PUBLIC) {
-            println("```diff")
+            list.add("```diff")
         }
         for (change in changes) {
             val pr = when (outputType) {
@@ -144,16 +162,16 @@ private fun print(
                 OutputType.DISCORD_INTERNAL -> " [PR](<${change.prLink}>)"
             }
             val changePrefix = getChangePrefix(category.name, outputType)
-            println("$changePrefix${change.text} - ${change.author}$pr")
+            list.add("$changePrefix${change.text} - ${change.author}$pr")
             for (s in change.extraInfo) {
-                println("$extraInfoPrefix$s")
+                list.add("$extraInfoPrefix$s")
             }
         }
         if (outputType == OutputType.DISCORD_PUBLIC) {
-            println("```")
+            list.add("```")
         }
     }
-    println(border)
+    return list
 }
 
 fun getChangePrefix(name: String, outputType: OutputType): String = when (outputType) {
