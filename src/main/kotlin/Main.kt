@@ -62,6 +62,7 @@ fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title:
     val categories = mutableListOf<Category>()
     val allChanges = mutableListOf<Change>()
     var errors = 0
+    var excluded = 0
     var done = 0
     // TODO find better solution for this sorting logic
     val filtered = when (whatToDo) {
@@ -81,6 +82,15 @@ fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title:
         val body = pr.body
 
         val description = body?.split(System.lineSeparator()) ?: emptyList()
+        if (description.isNotEmpty()) {
+            val last = description.last()
+            if (last == "exclude_from_changelog") {
+                println("")
+                println("Excluded #$number ($prLink)")
+                excluded++
+                continue
+            }
+        }
         try {
             allChanges.addAll(parseChanges(description, prLink, categories))
             done++
@@ -100,8 +110,13 @@ fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title:
         print(categories, allChanges, type, title)
     }
     println("")
-    println("Found $errors PRs with errors")
-    println("Loaded $done PRs correctly")
+    if (excluded > 0) {
+        println("Excluded $excluded PRs.")
+    }
+    if (errors > 0) {
+        println("Found $errors PRs with errors.")
+    }
+    println("Loaded $done PRs correctly.")
     if (errors > 0) {
         if (hideWhenError) {
             exitProcess(-1)
