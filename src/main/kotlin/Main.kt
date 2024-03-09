@@ -39,7 +39,8 @@ enum class WhatToDo {
 fun main() {
     val firstPr = 1122
     val hideWhenError = true
-    val title = "Version 0.24 Beta 8"
+    val fullVersion = "0.24"
+    val beta = 8
 
     val whatToDo = WhatToDo.NEXT_BETA
 
@@ -55,10 +56,17 @@ fun main() {
     val gson = GsonBuilder().create()
     val fromJson = gson.fromJson(data, JsonArray::class.java)
     val prs = fromJson.map { gson.fromJson(it, PullRequest::class.java) }
-    readPrs(prs, firstPr, hideWhenError, title, whatToDo)
+    readPrs(prs, firstPr, hideWhenError, whatToDo, fullVersion, beta)
 }
 
-fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title: String, whatToDo: WhatToDo) {
+fun readPrs(
+    prs: List<PullRequest>,
+    firstPr: Int,
+    hideWhenError: Boolean,
+    whatToDo: WhatToDo,
+    fullVersion: String,
+    beta: Int,
+) {
     val categories = mutableListOf<Category>()
     val allChanges = mutableListOf<Change>()
     var errors = 0
@@ -107,7 +115,7 @@ fun readPrs(prs: List<PullRequest>, firstPr: Int, hideWhenError: Boolean, title:
     println("")
 
     for (type in OutputType.entries) {
-        print(categories, allChanges, type, title)
+        print(categories, allChanges, type, fullVersion, beta)
     }
     println("")
     if (excluded > 0) {
@@ -132,14 +140,15 @@ private fun print(
     categories: MutableList<Category>,
     allChanges: MutableList<Change>,
     outputType: OutputType,
-    title: String,
+    fullVersion: String,
+    beta: Int,
 ) {
     val extraInfoPrefix = when (outputType) {
         OutputType.DISCORD_PUBLIC -> " = "
         OutputType.GITHUB -> "   * "
         OutputType.DISCORD_INTERNAL -> " - "
     }
-    val list = createPrint(categories, outputType, allChanges, extraInfoPrefix)
+    val list = createPrint(categories, outputType, allChanges, extraInfoPrefix, fullVersion, beta)
     val border = "================================================================================="
     println("")
     println("outputType ${outputType.name.lowercase()}:")
@@ -148,7 +157,6 @@ private fun print(
         println("$totalLength/2000 characters used")
     }
     println(border)
-    println("## $title")
     for (line in list) {
         println(line)
     }
@@ -160,8 +168,12 @@ private fun createPrint(
     outputType: OutputType,
     allChanges: MutableList<Change>,
     extraInfoPrefix: String,
+    fullVersion: String,
+    beta: Int,
 ): MutableList<String> {
     val list = mutableListOf<String>()
+    list.add("## Version $fullVersion Beta $beta")
+
     for (category in allowedCategories.map { getCategory(categories, it) }) {
         if (outputType == OutputType.DISCORD_PUBLIC && category.name == "Technical Details") continue
         val changes = allChanges.filter { it.category == category }
@@ -186,6 +198,15 @@ private fun createPrint(
             list.add("```")
         }
     }
+    if (outputType == OutputType.DISCORD_PUBLIC) {
+        val root = "https://github.com/hannibal002/SkyHanni"
+        val releaseLink = "$root/releases/tag/$fullVersion.Beta.$beta>"
+        list.add("For a full changelog, including technical details, see the [GitHub release](<$releaseLink)")
+
+        val downloadLink = "$root/releases/download/$fullVersion.Beta.$beta/SkyHanni-$fullVersion.Beta.$beta.jar"
+        list.add("Download link: $downloadLink")
+    }
+
     return list
 }
 
