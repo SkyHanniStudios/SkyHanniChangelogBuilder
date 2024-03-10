@@ -44,12 +44,10 @@ fun main() {
 
     val whatToDo = WhatToDo.NEXT_BETA
 
-    println("")
-
     @Suppress("KotlinConstantConditions")
     val url = when (whatToDo) {
         WhatToDo.NEXT_BETA -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=50"
-        WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=20"
+        WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=30"
     }
 
     val data = getTextFromUrl(url).joinToString("")
@@ -84,6 +82,8 @@ fun readPrs(
         .map { it.first to Long.MAX_VALUE - Instant.parse(it.second).toEpochMilli() }
         .sortedBy { it.second }
         .map { it.first }
+
+    println("")
     for (pr in filtered) {
         val number = pr.number
         val prLink = pr.htmlUrl
