@@ -37,10 +37,10 @@ enum class WhatToDo {
 }
 
 fun main() {
-    val firstPr = 1011
+    val firstPr = 1138
     val hideWhenError = true
     val fullVersion = "0.24"
-    val beta = 9
+    val beta = 10
 
     val whatToDo = WhatToDo.NEXT_BETA
 
