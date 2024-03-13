@@ -9,7 +9,16 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.system.exitProcess
 
-val allowedCategories = listOf("New Features", "Improvements", "Fixes", "Technical Details", "Removed Features")
+enum class Category(val changeLogName: String) {
+    NEW("New Features"),
+    IMPROVEMENT("Improvements"),
+    FIX("Fixes"),
+    INTERNAL("Technical Details"),
+    REMOVED("Removed Features"),
+    ;
+}
+
+//val allowedCategories = listOf("New Features", "Improvements", "Fixes", "Technical Details", "Removed Features")
 
 val categoryPattern = "## Changelog (?<category>.*)".toPattern()
 val changePattern = "\\+ (?<text>.*) - (?<author>.*)".toPattern()
@@ -65,7 +74,6 @@ fun readPrs(
     fullVersion: String,
     beta: Int,
 ) {
-    val categories = mutableListOf<Category>()
     val allChanges = mutableListOf<Change>()
     var errors = 0
     var excluded = 0
@@ -115,7 +123,7 @@ fun readPrs(
     println("")
 
     for (type in OutputType.entries) {
-        print(categories, allChanges, type, fullVersion, beta)
+        print(allChanges, type, fullVersion, beta)
     }
     println("")
     if (excluded > 0) {
@@ -137,7 +145,6 @@ enum class OutputType {
 }
 
 private fun print(
-    categories: MutableList<Category>,
     allChanges: MutableList<Change>,
     outputType: OutputType,
     fullVersion: String,
@@ -148,7 +155,7 @@ private fun print(
         OutputType.GITHUB -> "   * "
         OutputType.DISCORD_INTERNAL -> " - "
     }
-    val list = createPrint(categories, outputType, allChanges, extraInfoPrefix, fullVersion, beta)
+    val list = createPrint(outputType, allChanges, extraInfoPrefix, fullVersion, beta)
     val border = "================================================================================="
     println("")
     println("outputType ${outputType.name.lowercase()}:")
@@ -164,7 +171,6 @@ private fun print(
 }
 
 private fun createPrint(
-    categories: MutableList<Category>,
     outputType: OutputType,
     allChanges: MutableList<Change>,
     extraInfoPrefix: String,
@@ -174,8 +180,8 @@ private fun createPrint(
     val list = mutableListOf<String>()
     list.add("## Version $fullVersion Beta $beta")
 
-    for (category in allowedCategories.map { getCategory(categories, it) }) {
-        if (outputType == OutputType.DISCORD_PUBLIC && category.name == "Technical Details") continue
+    for (category in Category.entries) {
+        if (outputType == OutputType.DISCORD_PUBLIC && category == Category.INTERNAL) continue
         val changes = allChanges.filter { it.category == category }
         if (changes.isEmpty()) continue
         list.add("### " + category.name)
@@ -229,7 +235,6 @@ inline fun <T> Pattern.matchMatcher(text: String, consumer: Matcher.() -> T) =
 fun parseChanges(
     description: List<String>,
     prLink: String,
-    categories: MutableList<Category>,
 ): List<Change> {
     var currentCategory: Category? = null
     var currentChange: Change? = null
@@ -243,10 +248,7 @@ fun parseChanges(
 
         categoryPattern.matchMatcher(line) {
             val categoryName = group("category")
-            if (categoryName !in allowedCategories) {
-                error("unknown category: '$categoryName'")
-            }
-            currentCategory = getCategory(categories, categoryName)
+            currentCategory = getCategoryByLogName(categoryName) ?: error("unknown category: '$categoryName'")
             currentChange = null
             continue
         }
@@ -287,18 +289,9 @@ fun parseChanges(
     return changes
 }
 
-fun getCategory(categories: MutableList<Category>, newName: String): Category {
-    for (category in categories) {
-        if (category.name == newName) {
-            return category
-        }
-    }
-    val category = Category(newName)
-    categories.add(category)
-    return category
-}
+fun getCategoryByLogName(name: String): Category? = Category.entries.find { it.changeLogName == name }
 
-class Category(val name: String)
+//class Category(val name: String)
 
 class Change(val text: String, val category: Category, val prLink: String, val author: String) {
     val extraInfo = mutableListOf<String>()
