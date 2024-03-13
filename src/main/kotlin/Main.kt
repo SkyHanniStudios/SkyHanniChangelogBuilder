@@ -9,12 +9,12 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.system.exitProcess
 
-enum class Category(val changeLogName: String) {
-    NEW("New Features"),
-    IMPROVEMENT("Improvements"),
-    FIX("Fixes"),
-    INTERNAL("Technical Details"),
-    REMOVED("Removed Features"),
+enum class Category(val changeLogName: String, val prTitle: String) {
+    NEW("New Features", "Feature"),
+    IMPROVEMENT("Improvements", "Improvement"),
+    FIX("Fixes", "Fix"),
+    INTERNAL("Technical Details", "Backend"),
+    REMOVED("Removed Features", "Removed Feature"),
     ;
 }
 
@@ -78,6 +78,7 @@ fun readPrs(
     var errors = 0
     var excluded = 0
     var done = 0
+    var wrongPrName = 0
     // TODO find better solution for this sorting logic
     val filtered = when (whatToDo) {
         WhatToDo.NEXT_BETA -> prs.filter { it.mergedAt != null }
@@ -96,6 +97,7 @@ fun readPrs(
         val number = pr.number
         val prLink = pr.htmlUrl
         val body = pr.body
+        val title = pr.title
 
         val description = body?.split(System.lineSeparator()) ?: emptyList()
         if (description.isNotEmpty()) {
@@ -108,7 +110,11 @@ fun readPrs(
             }
         }
         try {
-            allChanges.addAll(parseChanges(description, prLink, categories))
+            val newChanges = parseChanges(description, prLink)
+            if (hasWrongPrName(prLink, title, newChanges)) {
+                wrongPrName++
+            }
+            allChanges.addAll(newChanges)
             done++
         } catch (t: Throwable) {
             println("")
@@ -130,7 +136,10 @@ fun readPrs(
         println("Excluded $excluded PRs.")
     }
     if (errors > 0) {
-        println("Found $errors PRs with errors.")
+        println("Found $errors PRs with errors!")
+    }
+    if (wrongPrName > 0) {
+        println("Found $wrongPrName PRs with wrong names!")
     }
     println("Loaded $done PRs correctly.")
     if (errors > 0) {
@@ -138,6 +147,30 @@ fun readPrs(
             exitProcess(-1)
         }
     }
+}
+
+fun hasWrongPrName(prLink: String, title: String, newChanges: List<Change>): Boolean {
+    val hasFix = newChanges.any { it.category == Category.FIX }
+    for (category in Category.entries) {
+        if (newChanges.any { it.category == category }) {
+            var start = category.prTitle
+            if (hasFix && category != Category.FIX) {
+                start += " + Fix"
+            }
+            start += ": "
+            val wrongName = !title.startsWith(start)
+            if (wrongName) {
+                println("wrong pr title!")
+                println("found: '$title'")
+                println("should start with $start")
+                println("link: $prLink")
+                println(" ")
+            }
+            return wrongName
+        }
+    }
+
+    return false
 }
 
 enum class OutputType {
