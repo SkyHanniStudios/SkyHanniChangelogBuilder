@@ -184,7 +184,7 @@ private fun createPrint(
         if (outputType == OutputType.DISCORD_PUBLIC && category == Category.INTERNAL) continue
         val changes = allChanges.filter { it.category == category }
         if (changes.isEmpty()) continue
-        list.add("### " + category.name)
+        list.add("### " + category.changeLogName)
         if (outputType == OutputType.DISCORD_PUBLIC) {
             list.add("```diff")
         }
@@ -194,7 +194,7 @@ private fun createPrint(
                 OutputType.GITHUB -> " (${change.prLink})"
                 OutputType.DISCORD_INTERNAL -> " [PR](<${change.prLink}>)"
             }
-            val changePrefix = getChangePrefix(category.name, outputType)
+            val changePrefix = getChangePrefix(category, outputType)
             list.add("$changePrefix${change.text} - ${change.author}$pr")
             for (s in change.extraInfo) {
                 list.add("$extraInfoPrefix$s")
@@ -216,15 +216,15 @@ private fun createPrint(
     return list
 }
 
-fun getChangePrefix(name: String, outputType: OutputType): String = when (outputType) {
+fun getChangePrefix(category: Category, outputType: OutputType): String = when (outputType) {
     OutputType.DISCORD_INTERNAL -> "- "
     OutputType.GITHUB -> "+ "
-    OutputType.DISCORD_PUBLIC -> when (name) {
-        "New Features" -> "+ "
-        "Improvements" -> "+ "
-        "Fixes" -> "~ "
-        "Removed Features" -> "- "
-        else -> error("impossible change prefix")
+    OutputType.DISCORD_PUBLIC -> when (category) {
+        Category.NEW -> "+ "
+        Category.IMPROVEMENT -> "+ "
+        Category.FIX -> "~ "
+        Category.REMOVED -> "- "
+        Category.INTERNAL -> error("internal not in discord public")
     }
 }
 
