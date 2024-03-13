@@ -75,7 +75,7 @@ fun readPrs(
     beta: Int,
 ) {
     val allChanges = mutableListOf<Change>()
-    var errors = 0
+    val errors = mutableListOf<String>()
     var excluded = 0
     var done = 0
     var wrongPrName = 0
@@ -117,16 +117,21 @@ fun readPrs(
             allChanges.addAll(newChanges)
             done++
         } catch (t: Throwable) {
-            println("")
-            println("Error in #$number ($prLink)")
-            println(t.message)
-            errors++
+            errors.add("Error in #$number ($prLink)\n${t.message}")
+            if (hasWrongPrName(prLink, title, emptyList())) {
+                wrongPrName++
+            }
         }
         if (whatToDo == WhatToDo.NEXT_BETA) {
             if (number == firstPr) break
         }
     }
     println("")
+
+    for (error in errors) {
+        println(" ")
+        println(error)
+    }
 
     for (type in OutputType.entries) {
         print(allChanges, type, fullVersion, beta)
@@ -135,14 +140,15 @@ fun readPrs(
     if (excluded > 0) {
         println("Excluded $excluded PRs.")
     }
-    if (errors > 0) {
-        println("Found $errors PRs with errors!")
+    val errorSize = errors.size
+    if (errorSize > 0) {
+        println("Found $errorSize PRs with errors!")
     }
     if (wrongPrName > 0) {
         println("Found $wrongPrName PRs with wrong names!")
     }
     println("Loaded $done PRs correctly.")
-    if (errors > 0) {
+    if (errorSize > 0) {
         if (hideWhenError) {
             exitProcess(-1)
         }
@@ -168,6 +174,16 @@ fun hasWrongPrName(prLink: String, title: String, newChanges: List<Change>): Boo
             }
             return wrongName
         }
+    }
+
+    val prefix = "Wrong/broken Changelog: "
+    if (!title.startsWith(prefix)) {
+        println("wrong pr title!")
+        println("found: '$title'")
+        println("should start with $prefix")
+        println("link: $prLink")
+        println(" ")
+        return true
     }
 
     return false
