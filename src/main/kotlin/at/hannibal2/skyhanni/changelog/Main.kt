@@ -1,5 +1,6 @@
 package org.example
 
+import at.hannibal2.skyhanni.changelog.GsonUtils
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 
@@ -25,19 +26,9 @@ val changePattern = "\\+ (?<text>.*) - (?<author>.*)".toPattern()
 val extraInfoPattern = " {4}\\* (?<text>.*)".toPattern()
 val illegalStartPattern = "^[-=*+ ].*".toPattern()
 
-fun getTextFromUrl(urlString: String): List<String> {
+fun getTextFromUrl(urlString: String): String {
     val url = URL(urlString)
-    val connection = url.openConnection()
-    val inputStream = connection.getInputStream()
-    val text = mutableListOf<String>()
-
-    inputStream.bufferedReader().useLines { lines ->
-        lines.forEach {
-            text.add(it)
-        }
-    }
-
-    return text
+    return url.openStream().use { it.bufferedReader().readText() }
 }
 
 enum class WhatToDo {
@@ -59,10 +50,8 @@ fun main() {
         WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=30"
     }
 
-    val data = getTextFromUrl(url).joinToString("")
-    val gson = GsonBuilder().create()
-    val fromJson = gson.fromJson(data, JsonArray::class.java)
-    val prs = fromJson.map { gson.fromJson(it, PullRequest::class.java) }
+    val data = getTextFromUrl(url)
+    val prs = GsonUtils.readObject<List<PullRequest>>(data)
     readPrs(prs, firstPr, hideWhenError, whatToDo, fullVersion, beta)
 }
 
