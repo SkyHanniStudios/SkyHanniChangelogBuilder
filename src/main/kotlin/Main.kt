@@ -89,6 +89,7 @@ fun readPrs(
 
     }
         .map { it.first to Long.MAX_VALUE - Instant.parse(it.second).toEpochMilli() }
+        .filter { !it.first.draft }
         .sortedBy { it.second }
         .map { it.first }
 
