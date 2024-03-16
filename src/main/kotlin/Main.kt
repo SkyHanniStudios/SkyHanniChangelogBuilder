@@ -209,7 +209,7 @@ private fun print(
     val border = "================================================================================="
     println("")
     println("outputType ${outputType.name.lowercase()}:")
-    val totalLength = list.sumOf { it.length }
+    val totalLength = list.sumOf { it.length } + list.size - 1
     if (outputType != OutputType.GITHUB) {
         println("$totalLength/2000 characters used")
     }
