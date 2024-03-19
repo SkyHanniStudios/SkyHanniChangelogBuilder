@@ -52,6 +52,7 @@ fun main() {
     val beta = 15
 
     val whatToDo = WhatToDo.NEXT_BETA
+//    val whatToDo = WhatToDo.OPEN_PRS
 
     @Suppress("KotlinConstantConditions")
     val url = when (whatToDo) {
