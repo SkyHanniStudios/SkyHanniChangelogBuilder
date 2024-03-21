@@ -56,8 +56,8 @@ fun main() {
 
     @Suppress("KotlinConstantConditions")
     val url = when (whatToDo) {
-        WhatToDo.NEXT_BETA -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=50"
-        WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=30"
+        WhatToDo.NEXT_BETA -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=150"
+        WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=150"
     }
 
     val data = getTextFromUrl(url).joinToString("")
@@ -95,11 +95,18 @@ fun readPrs(
         .map { it.first }
 
     println("")
+    var breakNext = false
     for (pr in filtered) {
+        if (breakNext) break
         val number = pr.number
         val prLink = pr.htmlUrl
         val body = pr.body
         val title = pr.title
+        if (whatToDo == WhatToDo.NEXT_BETA) {
+            if (number == firstPr) {
+                breakNext = true
+            }
+        }
 
         val description = body?.split(System.lineSeparator()) ?: emptyList()
         if (description.isNotEmpty()) {
@@ -107,6 +114,7 @@ fun readPrs(
             if (last == "exclude_from_changelog") {
                 println("")
                 println("Excluded #$number ($prLink)")
+
                 excluded++
                 continue
             }
@@ -123,9 +131,6 @@ fun readPrs(
             if (hasWrongPrName(prLink, title, emptyList())) {
                 wrongPrName++
             }
-        }
-        if (whatToDo == WhatToDo.NEXT_BETA) {
-            if (number == firstPr) break
         }
     }
     println("")
@@ -291,7 +296,7 @@ fun parseChanges(
     var currentChange: Change? = null
     val changes = mutableListOf<Change>()
     for (line in description) {
-        if (line == "") {
+        if (line.trim().isEmpty()) {
             currentChange = null
             currentCategory = null
             continue
