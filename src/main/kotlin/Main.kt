@@ -2,12 +2,10 @@ package org.example
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
-
 import java.net.URL
 import java.time.Instant
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-import kotlin.system.exitProcess
 
 enum class Category(val changeLogName: String, val prTitle: String) {
     NEW("New Features", "Feature"),
@@ -46,10 +44,10 @@ enum class WhatToDo {
 }
 
 fun main() {
-    val firstPr = 1223
+    val firstPr = 1235
     val hideWhenError = true
     val fullVersion = "0.24"
-    val beta = 17
+    val beta = 18
 
     val whatToDo = WhatToDo.NEXT_BETA
 //    val whatToDo = WhatToDo.OPEN_PRS
