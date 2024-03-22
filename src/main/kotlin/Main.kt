@@ -140,26 +140,22 @@ fun readPrs(
         println(error)
     }
 
-    for (type in OutputType.entries) {
-        print(allChanges, type, fullVersion, beta)
+    if (errors.size == 0 || !hideWhenError) {
+        for (type in OutputType.entries) {
+            print(allChanges, type, fullVersion, beta)
+        }
     }
     println("")
     if (excluded > 0) {
         println("Excluded $excluded PRs.")
     }
-    val errorSize = errors.size
-    if (errorSize > 0) {
-        println("Found $errorSize PRs with errors!")
+    if (errors.size > 0) {
+        println("Found ${errors.size} PRs with errors!")
     }
     if (wrongPrName > 0) {
         println("Found $wrongPrName PRs with wrong names!")
     }
     println("Loaded $done PRs correctly.")
-    if (errorSize > 0) {
-        if (hideWhenError) {
-            exitProcess(-1)
-        }
-    }
 }
 
 fun hasWrongPrName(prLink: String, title: String, newChanges: List<Change>): Boolean {
