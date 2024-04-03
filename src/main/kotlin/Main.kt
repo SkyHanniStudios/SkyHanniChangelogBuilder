@@ -108,8 +108,7 @@ fun readPrs(
 
         val description = body?.split(System.lineSeparator()) ?: emptyList()
         if (description.isNotEmpty()) {
-            val last = description.last()
-            if (last == "exclude_from_changelog") {
+            if (description.any { it == "exclude_from_changelog" }) {
                 println("")
                 println("Excluded #$number ($prLink)")
 
