@@ -106,7 +106,7 @@ fun readPrs(
             }
         }
 
-        val description = body?.split(System.lineSeparator()) ?: emptyList()
+        val description = body?.lines() ?: emptyList()
         if (description.isNotEmpty()) {
             if (description.any { it == "exclude_from_changelog" }) {
                 println("")
