@@ -288,6 +288,16 @@ fun parseChanges(
     var currentCategory: Category? = null
     var currentChange: Change? = null
     val changes = mutableListOf<Change>()
+
+    fun checkWording(text: String) {
+        if (text.lowercase().startsWith("add ")) {
+            error("do not use 'add', use 'Added'")
+        }
+        if (text.lowercase().startsWith("fix ")) {
+            error("do not use 'fix', use 'Fixed'")
+        }
+    }
+
     for (line in description) {
         if (line.trim().isEmpty()) {
             currentChange = null
@@ -313,6 +323,7 @@ fun parseChanges(
             if (illegalStartPattern.matcher(text).matches()) {
                 error("illegal start at change: '$text'")
             }
+            checkWording(text)
             currentChange = Change(text, category, prLink, author).also {
                 changes.add(it)
             }
@@ -325,6 +336,7 @@ fun parseChanges(
             if (illegalStartPattern.matcher(text).matches()) {
                 error("illegal start at extra info: '$text'")
             }
+            checkWording(text)
             change.extraInfo.add(text)
             continue
         }
