@@ -296,6 +296,9 @@ fun parseChanges(
         if (text.lowercase().startsWith("fix ")) {
             error("do not use 'fix', use 'Fixed'")
         }
+        if (text.lowercase().startsWith("improve ")) {
+            error("do not use 'improve', use 'Improve'")
+        }
     }
 
     for (line in description) {
