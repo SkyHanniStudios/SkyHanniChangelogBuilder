@@ -280,6 +280,22 @@ fun getChangePrefix(category: Category, outputType: OutputType): String = when (
 inline fun <T> Pattern.matchMatcher(text: String, consumer: Matcher.() -> T) =
     matcher(text).let { if (it.matches()) consumer(it) else null }
 
+fun checkWording(text: String) {
+    val low = text.lowercase()
+    if (low.startsWith("add ") || low.startsWith("adds ")) {
+        error(" use 'Added'")
+    }
+    if (low.startsWith("fix ") || low.startsWith("fixes ")) {
+        error(" use 'Fixed'")
+    }
+    if (low.startsWith("improve ") || low.startsWith("improves ")) {
+        error(" use 'Improve'")
+    }
+    if (!text.endsWith(".")) {
+        error("should end with a dot")
+    }
+}
+
 @Suppress("IMPLICIT_NOTHING_TYPE_ARGUMENT_IN_RETURN_POSITION")
 fun parseChanges(
     description: List<String>,
@@ -288,18 +304,6 @@ fun parseChanges(
     var currentCategory: Category? = null
     var currentChange: Change? = null
     val changes = mutableListOf<Change>()
-
-    fun checkWording(text: String) {
-        if (text.lowercase().startsWith("add ")) {
-            error("do not use 'add', use 'Added'")
-        }
-        if (text.lowercase().startsWith("fix ")) {
-            error("do not use 'fix', use 'Fixed'")
-        }
-        if (text.lowercase().startsWith("improve ")) {
-            error("do not use 'improve', use 'Improve'")
-        }
-    }
 
     for (line in description) {
         if (line.trim().isEmpty()) {
