@@ -306,46 +306,50 @@ fun parseChanges(
     val changes = mutableListOf<Change>()
 
     for (line in description) {
-        if (line.trim().isEmpty()) {
-            currentChange = null
-            currentCategory = null
-            continue
-        }
-
-        categoryPattern.matchMatcher(line) {
-            val categoryName = group("category")
-            currentCategory = getCategoryByLogName(categoryName) ?: error("unknown category: '$categoryName'")
-            currentChange = null
-            continue
-        }
-
-        val category = currentCategory ?: continue
-
-        changePattern.matchMatcher(line) {
-            val author = group("author")
-            if (author == "your_name_here") {
-                error("no author name")
+        try {
+            if (line.trim().isEmpty()) {
+                currentChange = null
+                currentCategory = null
+                continue
             }
-            val text = group("text")
-            if (illegalStartPattern.matcher(text).matches()) {
-                error("illegal start at change: '$text'")
-            }
-            checkWording(text)
-            currentChange = Change(text, category, prLink, author).also {
-                changes.add(it)
-            }
-            continue
-        }
 
-        extraInfoPattern.matchMatcher(line) {
-            val change = currentChange ?: error("Found extra info without change: '$line'")
-            val text = group("text")
-            if (illegalStartPattern.matcher(text).matches()) {
-                error("illegal start at extra info: '$text'")
+            categoryPattern.matchMatcher(line) {
+                val categoryName = group("category")
+                currentCategory = getCategoryByLogName(categoryName) ?: error("unknown category: '$categoryName'")
+                currentChange = null
+                continue
             }
-            checkWording(text)
-            change.extraInfo.add(text)
-            continue
+
+            val category = currentCategory ?: continue
+
+            changePattern.matchMatcher(line) {
+                val author = group("author")
+                if (author == "your_name_here") {
+                    error("no author name")
+                }
+                val text = group("text")
+                if (illegalStartPattern.matcher(text).matches()) {
+                    error("illegal start at change: '$text'")
+                }
+                checkWording(text)
+                currentChange = Change(text, category, prLink, author).also {
+                    changes.add(it)
+                }
+                continue
+            }
+
+            extraInfoPattern.matchMatcher(line) {
+                val change = currentChange ?: error("Found extra info without change: '$line'")
+                val text = group("text")
+                if (illegalStartPattern.matcher(text).matches()) {
+                    error("illegal start at extra info: '$text'")
+                }
+                checkWording(text)
+                change.extraInfo.add(text)
+                continue
+            }
+        } catch (e: IllegalStateException) {
+            error("error in line '$line' (${e.message})")
         }
         error("found unexpected line: '$line'")
     }
