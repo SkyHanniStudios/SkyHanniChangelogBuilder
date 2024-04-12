@@ -289,7 +289,7 @@ fun checkWording(text: String) {
         error(" use 'Fixed'")
     }
     if (low.startsWith("improve ") || low.startsWith("improves ")) {
-        error(" use 'Improve'")
+        error(" use 'Improved'")
     }
     if (!text.endsWith(".")) {
         error("should end with a dot")
