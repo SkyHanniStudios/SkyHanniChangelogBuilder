@@ -44,10 +44,10 @@ enum class WhatToDo {
 }
 
 fun main() {
-    val firstPr = 1444
+    val firstPr = 1481
     val hideWhenError = true
     val fullVersion = "0.25"
-    val beta = 8
+    val beta = 10
 
     val whatToDo = WhatToDo.NEXT_BETA
 //    val whatToDo = WhatToDo.OPEN_PRS
@@ -201,7 +201,7 @@ private fun print(
 ) {
     val extraInfoPrefix = when (outputType) {
         OutputType.DISCORD_PUBLIC -> " = "
-        OutputType.GITHUB -> "   * "
+        OutputType.GITHUB -> "   + "
         OutputType.DISCORD_INTERNAL -> " - "
     }
     val list = createPrint(outputType, allChanges, extraInfoPrefix, fullVersion, beta)
