@@ -44,10 +44,10 @@ enum class WhatToDo {
 }
 
 fun main() {
-    val firstPr = 1481
+    val firstPr = 1483
     val hideWhenError = true
     val fullVersion = "0.25"
-    val beta = 10
+    val beta = 11
 
     val whatToDo = WhatToDo.NEXT_BETA
 //    val whatToDo = WhatToDo.OPEN_PRS
@@ -179,10 +179,10 @@ fun hasWrongPrName(prLink: String, title: String, newChanges: List<Change>): Boo
     val prefix = "Wrong/broken Changelog: "
     if (!title.startsWith(prefix)) {
         println("wrong pr title!")
-        println("found: '$title'")
-        println("should start with $prefix")
-        println("link: $prLink")
-        println(" ")
+//        println("found: '$title'")
+//        println("should start with $prefix")
+//        println("link: $prLink")
+//        println(" ")
         return true
     }
 
