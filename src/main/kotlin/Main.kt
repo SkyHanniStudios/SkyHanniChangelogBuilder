@@ -281,6 +281,11 @@ inline fun <T> Pattern.matchMatcher(text: String, consumer: Matcher.() -> T) =
     matcher(text).let { if (it.matches()) consumer(it) else null }
 
 fun checkWording(text: String) {
+    if (text.isNotEmpty()) {
+        if (!text.first().isUpperCase()) {
+            error("should start with uppercase")
+        }
+    }
     val low = text.lowercase()
     if (low.startsWith("add ") || low.startsWith("adds ")) {
         error(" use 'Added'")
