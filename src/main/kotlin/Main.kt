@@ -373,3 +373,5 @@ fun getCategoryByLogName(name: String): Category? = Category.entries.find { it.c
 class Change(val text: String, val category: Category, val prLink: String, val author: String) {
     val extraInfo = mutableListOf<String>()
 }
+// smart ai prompt for formatting
+//find typos and fix them in this changelog. also suggest slightly better wording if applicable. then remove all formatting and send me the whole text in one code block as output
