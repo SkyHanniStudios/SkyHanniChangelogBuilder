@@ -374,4 +374,4 @@ class Change(val text: String, val category: Category, val prLink: String, val a
     val extraInfo = mutableListOf<String>()
 }
 // smart ai prompt for formatting
-//find typos and fix them in this changelog. also suggest slightly better wording if applicable. then remove all formatting and send me the whole text in one code block as output
+// keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
