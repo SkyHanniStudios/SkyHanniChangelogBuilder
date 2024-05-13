@@ -44,10 +44,10 @@ enum class WhatToDo {
 }
 
 fun main() {
-    val firstPr = 1726
+    val firstPr = 1756
     val hideWhenError = true
     val fullVersion = "0.25"
-    val beta = 23
+    val beta = 25
 
     val whatToDo = WhatToDo.NEXT_BETA
 //    val whatToDo = WhatToDo.OPEN_PRS
@@ -375,3 +375,4 @@ class Change(val text: String, val category: Category, val prLink: String, val a
 }
 // smart ai prompt for formatting
 // keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
+
