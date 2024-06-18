@@ -8,15 +8,11 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 enum class Category(val changeLogName: String, val prTitle: String) {
-    NEW("New Features", "Feature"),
-    IMPROVEMENT("Improvements", "Improvement"),
-    FIX("Fixes", "Fix"),
-    INTERNAL("Technical Details", "Backend"),
-    REMOVED("Removed Features", "Removed Feature"),
-    ;
+    NEW("New Features", "Feature"), IMPROVEMENT("Improvements", "Improvement"), FIX(
+        "Fixes", "Fix"
+    ),
+    INTERNAL("Technical Details", "Backend"), REMOVED("Removed Features", "Removed Feature"), ;
 }
-
-//val allowedCategories = listOf("New Features", "Improvements", "Fixes", "Technical Details", "Removed Features")
 
 val categoryPattern = "## Changelog (?<category>.*)".toPattern()
 val changePattern = "\\+ (?<text>.*) - (?<author>.*)".toPattern()
@@ -39,8 +35,7 @@ fun getTextFromUrl(urlString: String): List<String> {
 }
 
 enum class WhatToDo {
-    NEXT_BETA, OPEN_PRS,
-    ;
+    NEXT_BETA, OPEN_PRS, ;
 }
 
 fun main() {
@@ -52,8 +47,7 @@ fun main() {
     val whatToDo = WhatToDo.NEXT_BETA
 //    val whatToDo = WhatToDo.OPEN_PRS
 
-    @Suppress("KotlinConstantConditions")
-    val url = when (whatToDo) {
+    @Suppress("KotlinConstantConditions") val url = when (whatToDo) {
         WhatToDo.NEXT_BETA -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=150"
         WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=150"
     }
@@ -80,17 +74,12 @@ fun readPrs(
     var wrongPrName = 0
     // TODO find better solution for this sorting logic
     val filtered = when (whatToDo) {
-        WhatToDo.NEXT_BETA -> prs.filter { it.mergedAt != null }
-            .map { it to it.mergedAt }
+        WhatToDo.NEXT_BETA -> prs.filter { it.mergedAt != null }.map { it to it.mergedAt }
 
-        WhatToDo.OPEN_PRS -> prs
-            .map { it to it.updatedAt }
+        WhatToDo.OPEN_PRS -> prs.map { it to it.updatedAt }
 
-    }
-        .map { it.first to Long.MAX_VALUE - Instant.parse(it.second).toEpochMilli() }
-        .filter { !it.first.draft }
-        .sortedBy { it.second }
-        .map { it.first }
+    }.map { it.first to Long.MAX_VALUE - Instant.parse(it.second).toEpochMilli() }.filter { !it.first.draft }
+        .sortedBy { it.second }.map { it.first }
 
     println("")
     var breakNext = false
@@ -100,21 +89,17 @@ fun readPrs(
         val prLink = pr.htmlUrl
         val body = pr.body
         val title = pr.title
-        if (whatToDo == WhatToDo.NEXT_BETA) {
-            if (number == firstPr) {
-                breakNext = true
-            }
+        if (whatToDo == WhatToDo.NEXT_BETA && number == firstPr) {
+            breakNext = true
         }
 
         val description = body?.lines() ?: emptyList()
-        if (description.isNotEmpty()) {
-            if (description.any { it == "exclude_from_changelog" }) {
-                println("")
-                println("Excluded #$number ($prLink)")
+        if (description.any { it == "exclude_from_changelog" }) {
+            println("")
+            println("Excluded #$number ($prLink)")
 
-                excluded++
-                continue
-            }
+            excluded++
+            continue
         }
         try {
             val newChanges = parseChanges(description, prLink)
@@ -137,7 +122,7 @@ fun readPrs(
         println(error)
     }
 
-    if (errors.size == 0 || !hideWhenError) {
+    if (errors.isEmpty() || !hideWhenError) {
         for (type in OutputType.entries) {
             print(allChanges, type, fullVersion, beta)
         }
@@ -146,7 +131,7 @@ fun readPrs(
     if (excluded > 0) {
         println("Excluded $excluded PRs.")
     }
-    if (errors.size > 0) {
+    if (errors.isNotEmpty()) {
         println("Found ${errors.size} PRs with errors!")
     }
     if (wrongPrName > 0) {
@@ -177,16 +162,7 @@ fun hasWrongPrName(prLink: String, title: String, newChanges: List<Change>): Boo
     }
 
     val prefix = "Wrong/broken Changelog: "
-    if (!title.startsWith(prefix)) {
-//        println("wrong pr title!")
-//        println("found: '$title'")
-//        println("should start with $prefix")
-//        println("link: $prLink")
-//        println(" ")
-        return true
-    }
-
-    return false
+    return !title.startsWith(prefix)
 }
 
 enum class OutputType {
@@ -194,7 +170,7 @@ enum class OutputType {
 }
 
 private fun print(
-    allChanges: MutableList<Change>,
+    allChanges: List<Change>,
     outputType: OutputType,
     fullVersion: String,
     beta: Int,
@@ -221,7 +197,7 @@ private fun print(
 
 private fun createPrint(
     outputType: OutputType,
-    allChanges: MutableList<Change>,
+    allChanges: List<Change>,
     extraInfoPrefix: String,
     fullVersion: String,
     beta: Int,
@@ -281,10 +257,8 @@ inline fun <T> Pattern.matchMatcher(text: String, consumer: Matcher.() -> T) =
     matcher(text).let { if (it.matches()) consumer(it) else null }
 
 fun checkWording(text: String) {
-    if (text.isNotEmpty()) {
-        if (!text.first().isUpperCase()) {
-            error("should start with uppercase")
-        }
+    if (text.isNotEmpty() && !text.first().isUpperCase()) {
+        error("should start with uppercase")
     }
     val low = text.lowercase()
     if (low.startsWith("add ") || low.startsWith("adds ")) {
