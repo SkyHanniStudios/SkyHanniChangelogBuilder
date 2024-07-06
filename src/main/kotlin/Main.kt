@@ -8,9 +8,9 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 enum class Category(val changeLogName: String, val prTitle: String) {
-    NEW("New Features", "Feature"), IMPROVEMENT("Improvements", "Improvement"), FIX(
-        "Fixes", "Fix"
-    ),
+    NEW("New Features", "Feature"),
+    IMPROVEMENT("Improvements", "Improvement"),
+    FIX("Fixes", "Fix"),
     INTERNAL("Technical Details", "Backend"), REMOVED("Removed Features", "Removed Feature"), ;
 }
 
