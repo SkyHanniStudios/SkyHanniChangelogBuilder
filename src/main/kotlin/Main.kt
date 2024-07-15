@@ -262,17 +262,17 @@ fun checkWording(text: String) {
         error("should start with uppercase")
     }
     val low = text.lowercase()
-    if (low.startsWith("added ") || low.startsWith("adds ")) {
-        error(" use 'Add'")
+    if (low.startsWith("add ") || low.startsWith("adds ")) {
+        error(" use 'Added'")
     }
-    if (low.startsWith("fixed ") || low.startsWith("fixes ")) {
-        error(" use 'Fix'")
+    if (low.startsWith("fix ") || low.startsWith("fixes ")) {
+        error(" use 'Fixed'")
     }
-    if (low.startsWith("improved ") || low.startsWith("improves ")) {
-        error(" use 'Improve'")
+    if (low.startsWith("improve ") || low.startsWith("improves ")) {
+        error(" use 'Improved'")
     }
-    if (low.startsWith("removed ") || low.startsWith("removes ")) {
-        error(" use 'Remove'")
+    if (low.startsWith("remove ") || low.startsWith("removes ")) {
+        error(" use 'Removed'")
     }
     if (!text.endsWith(".")) {
         error("should end with a dot")
