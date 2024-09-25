@@ -39,10 +39,10 @@ enum class WhatToDo {
 }
 
 fun main() {
-    val firstPr = 2559
+    val firstPr = 2572
     val hideWhenError = true
     val fullVersion = "0.27"
-    val beta = 11
+    val beta = 12
 
     val whatToDo = WhatToDo.NEXT_BETA
 //    val whatToDo = WhatToDo.OPEN_PRS
@@ -258,7 +258,8 @@ inline fun <T> Pattern.matchMatcher(text: String, consumer: Matcher.() -> T) =
     matcher(text).let { if (it.matches()) consumer(it) else null }
 
 fun checkWording(text: String) {
-    if (text.isNotEmpty() && !text.first().isUpperCase()) {
+    val first = text.first()
+    if (text.isNotEmpty() && !first.isUpperCase() && first.lowercase() != first.uppercase()) {
         error("should start with uppercase")
     }
     val low = text.lowercase()
