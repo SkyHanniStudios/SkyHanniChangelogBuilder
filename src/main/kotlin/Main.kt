@@ -39,10 +39,10 @@ enum class WhatToDo {
 }
 
 fun main() {
-    val firstPr = 2547
+    val firstPr = 2616
     val hideWhenError = true
     val fullVersion = "0.27"
-    val beta = 13
+    val beta = 14
 
     val whatToDo = WhatToDo.NEXT_BETA
 //    val whatToDo = WhatToDo.OPEN_PRS
@@ -125,6 +125,7 @@ fun readPrs(
 
     if (errors.isEmpty() || !hideWhenError) {
         for (type in OutputType.entries) {
+            if (type == OutputType.DISCORD_INTERNAL) continue
             print(allChanges, type, fullVersion, beta)
         }
     }
@@ -167,7 +168,9 @@ fun hasWrongPrName(prLink: String, title: String, newChanges: List<Change>): Boo
 }
 
 enum class OutputType {
-    DISCORD_INTERNAL, GITHUB, DISCORD_PUBLIC,
+    DISCORD_INTERNAL,
+    GITHUB,
+    DISCORD_PUBLIC,
 }
 
 private fun print(
