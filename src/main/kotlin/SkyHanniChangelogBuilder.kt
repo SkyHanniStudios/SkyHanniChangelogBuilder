@@ -229,6 +229,7 @@ object SkyHanniChangelogBuilder {
         return errors
     }
 
+    // todo add indicators of where to copy paste if over 2000 characters
     private fun printChangelog(changes: List<CodeChange>, version: UpdateVersion, type: TextOutputType) {
         val text = generateChangelogText(changes, version, type)
 
@@ -314,7 +315,7 @@ enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
 }
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
-    DISCORD_INTERNAL(" = ", { " [PR](<${it.prLink}>)" }),
+    DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
     GITHUB("  + ", { " (${it.prLink})" }),
     DISCORD_PUBLIC(" - ", { "" }),
 }
