@@ -154,6 +154,9 @@ object SkyHanniChangelogBuilder {
                 }
                 val change = currentChange ?: continue
                 val text = group("text")
+                if (text == "Extra info.") {
+                    errors.add(ChangelogError("Extra info is not filled out", line))
+                }
 
                 illegalStartPattern.matchMatcher(text) {
                     errors.add(ChangelogError("Illegal start of extra info line", line))
