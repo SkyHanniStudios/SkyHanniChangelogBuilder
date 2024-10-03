@@ -1,28 +1,34 @@
 plugins {
-    kotlin("jvm") version "1.9.22"
+    java
+    kotlin("jvm") version "1.9.25"
+    `maven-publish`
 }
 
 group = "org.example"
-version = "1.0-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation(kotlin("stdlib-jdk8"))
+    implementation("com.google.code.gson:gson:2.11.0")
 }
 
-tasks.test {
-    useJUnitPlatform()
-}
 kotlin {
-    jvmToolchain(17)
     sourceSets.all {
         languageSettings {
             languageVersion = "2.0"
             enableLanguageFeature("BreakContinueInInlineLambdas")
+        }
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
         }
     }
 }
