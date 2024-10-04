@@ -28,7 +28,7 @@ class SkyHanniChangelogBuilderTest {
 
         assertTrue(errors.isEmpty(), "Expected no errors")
         assertEquals(4, changes.size, "Expected four changes")
-        assertEquals("Added new feature", changes[0].text)
+        assertEquals("Added new feature.", changes[0].text)
         assertEquals(PullRequestCategory.FEATURE, changes[0].category)
         assertEquals("John Doe", changes[0].author)
         assertEquals("Additional info.", changes[0].extraInfo[0])
