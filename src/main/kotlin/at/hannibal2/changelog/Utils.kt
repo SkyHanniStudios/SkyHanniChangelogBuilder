@@ -1,4 +1,4 @@
-package org.example
+package at.hannibal2.changelog
 
 import java.net.URL
 import java.util.regex.Matcher

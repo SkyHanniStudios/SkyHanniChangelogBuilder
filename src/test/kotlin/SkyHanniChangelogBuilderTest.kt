@@ -1,5 +1,5 @@
-import org.example.PullRequestCategory
-import org.example.SkyHanniChangelogBuilder
+import at.hannibal2.changelog.PullRequestCategory
+import at.hannibal2.changelog.SkyHanniChangelogBuilder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

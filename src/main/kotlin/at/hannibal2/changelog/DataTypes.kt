@@ -1,4 +1,4 @@
-package org.example
+package at.hannibal2.changelog
 
 import com.google.gson.annotations.SerializedName
 import java.util.Date

@@ -1,7 +1,7 @@
-package org.example
+package at.hannibal2.changelog
 
 import com.google.gson.GsonBuilder
-import org.example.Utils.matchMatcher
+import at.hannibal2.changelog.Utils.matchMatcher
 import java.util.Date
 
 object SkyHanniChangelogBuilder {
