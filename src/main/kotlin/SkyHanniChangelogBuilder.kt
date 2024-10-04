@@ -70,7 +70,7 @@ object SkyHanniChangelogBuilder {
             }
 
             val (changes, changeErrors) = findChanges(prBody, pullRequest.htmlUrl)
-            val titleErrors = findPullRequestNameErrors(pullRequest, changes)
+            val titleErrors = findPullRequestNameErrors(pullRequest.title, changes)
 
             if (titleErrors.isNotEmpty()) {
                 println("PR has incorrect name: ${pullRequest.prInfo()}")
@@ -104,7 +104,7 @@ object SkyHanniChangelogBuilder {
     }
 
     // todo implement tests for this
-    private fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
+    fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
         val changes = mutableListOf<CodeChange>()
         val errors = mutableListOf<ChangelogError>()
 
@@ -136,7 +136,7 @@ object SkyHanniChangelogBuilder {
                 val author = group("author")
 
                 if (author == "your_name_here") {
-                    errors.add(ChangelogError("Author not set", line))
+                    errors.add(ChangelogError("Author not set in change", line))
                 }
 
                 illegalStartPattern.matchMatcher(text) {
@@ -204,13 +204,12 @@ object SkyHanniChangelogBuilder {
         return errors
     }
 
-    private fun findPullRequestNameErrors(pr: PullRequest, changes: List<CodeChange>): List<PullRequestNameError> {
-        val prTitle = pr.title
+    fun findPullRequestNameErrors(prTitle: String, changes: List<CodeChange>): List<PullRequestNameError> {
         val errors = mutableListOf<PullRequestNameError>()
 
         prTitlePattern.matchMatcher(prTitle) {
             val prPrefixes = group("prefix").split(" + ")
-            val expectedCategories = changes.map { it.category }
+            val expectedCategories = changes.map { it.category }.toSet()
 
             val foundCategories = prPrefixes.mapNotNull { prefix ->
                 PullRequestCategory.fromPrPrefix(prefix) ?: run {
@@ -222,7 +221,7 @@ object SkyHanniChangelogBuilder {
             foundCategories.forEach { category ->
                 if (category !in expectedCategories) {
                     val expectedOptions = expectedCategories.joinToString { it.prPrefix }
-                    errors.add(PullRequestNameError("PR has category '$category' which is not in the changelog. Expected categories: $expectedOptions"))
+                    errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
                 }
             }
             return errors
