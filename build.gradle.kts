@@ -4,7 +4,7 @@ plugins {
     `maven-publish`
 }
 
-group = "org.example"
+group = "at.hannibal2.changelog"
 version = "1.0.0"
 
 repositories {
