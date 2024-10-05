@@ -111,7 +111,7 @@ object SkyHanniChangelogBuilder {
         var currentCategory: PullRequestCategory? = null
         var currentChange: CodeChange? = null
 
-        for (line in prBody) {
+        loop@ for (line in prBody) {
             if (line.isBlank()) {
                 currentCategory = null
                 currentChange = null
@@ -126,7 +126,7 @@ object SkyHanniChangelogBuilder {
                     errors.add(ChangelogError("Unknown category: $categoryName", line))
                 }
 
-                continue
+                continue@loop
             }
 
             val category = currentCategory ?: continue
@@ -145,14 +145,14 @@ object SkyHanniChangelogBuilder {
                 errors.addAll(checkWording(text))
 
                 currentChange = CodeChange(text, category, prLink, author).also { changes.add(it) }
-                continue
+                continue@loop
             }
 
             extraInfoPattern.matchMatcher(line) {
                 if (currentChange == null) {
                     errors.add(ChangelogError("Extra info without a change", line))
                 }
-                val change = currentChange ?: continue
+                val change = currentChange ?: continue@loop
                 val text = group("text")
                 if (text == "Extra info.") {
                     errors.add(ChangelogError("Extra info is not filled out", line))
@@ -164,7 +164,7 @@ object SkyHanniChangelogBuilder {
                 errors.addAll(checkWording(text))
 
                 change.extraInfo.add(text)
-                continue
+                continue@loop
             }
 
         }
