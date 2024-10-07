@@ -13,6 +13,7 @@ object SkyHanniChangelogBuilder {
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
     private val changePattern = "\\+ (?<text>.+) - (?<author>.+)".toPattern()
+    private val changePatternNoAuthor = "\\+ (?<text>.+)".toPattern()
     private val extraInfoPattern = " {4}\\* (?<text>.+)".toPattern()
     private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
     private val illegalStartPattern = "^[-=*+ ].*".toPattern()
@@ -78,7 +79,7 @@ object SkyHanniChangelogBuilder {
 
             if (changeErrors.isNotEmpty()) {
                 println("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { println("  - ${it.message} on line: ${it.relevantLine}") }
+                changeErrors.forEach { println("  - ${it.message}${it.formatLine()}") }
                 println()
                 wrongPrDescription++
                 continue
@@ -145,6 +146,11 @@ object SkyHanniChangelogBuilder {
                 currentChange = CodeChange(text, category, prLink, author).also { changes.add(it) }
                 continue@loop
             }
+            changePatternNoAuthor.matchMatcher(line) {
+                errors.add(ChangelogError("Author is not set", line))
+
+                continue@loop
+            }
 
             extraInfoPattern.matchMatcher(line) {
                 if (currentChange == null) {
@@ -164,11 +170,10 @@ object SkyHanniChangelogBuilder {
                 change.extraInfo.add(text)
                 continue@loop
             }
-
         }
 
-        if (changes.isEmpty()) {
-            errors.add(ChangelogError("No changes detected in pull request.", ""))
+        if (changes.isEmpty() && errors.isEmpty()) {
+            errors.add(ChangelogError("No changes detected in this pull request", ""))
         }
         return changes to errors
     }
@@ -205,7 +210,6 @@ object SkyHanniChangelogBuilder {
     fun findPullRequestNameErrors(prTitle: String, changes: List<CodeChange>): List<PullRequestNameError> {
         val errors = mutableListOf<PullRequestNameError>()
         if (changes.isEmpty()) {
-            errors.add(PullRequestNameError("No changes detected in pull request, so cannot verify title."))
             return errors
         }
 
@@ -328,8 +332,12 @@ class CodeChange(val text: String, val category: PullRequestCategory, val prLink
     val extraInfo = mutableListOf<String>()
 }
 
-class ChangelogError(val message: String, val relevantLine: String)
+class ChangelogError(val message: String, val relevantLine: String) {
+    fun formatLine() = if (relevantLine.isBlank()) "" else " in text: $relevantLine"
+}
+
 class PullRequestNameError(val message: String)
+
 class UpdateVersion(private val fullVersion: String, private val betaVersion: String) {
     val asTitle = "Version $fullVersion Beta $betaVersion"
     val asTag ="$fullVersion.Beta.$betaVersion"
