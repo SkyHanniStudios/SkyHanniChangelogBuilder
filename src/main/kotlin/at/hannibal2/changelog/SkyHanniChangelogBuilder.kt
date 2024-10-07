@@ -99,7 +99,7 @@ object SkyHanniChangelogBuilder {
 
         println()
         println("${sortedPrs.count()} valid PRs found")
-        println("Excluded PRs: $excludedPrs")
+        println("Excluded PRs: ${excludedPrs.size}")
         println("PRs with wrong names: $wrongPrNames")
         println("PRs with wrong descriptions: $wrongPrDescription")
         println("Done PRs: $donePrs")
