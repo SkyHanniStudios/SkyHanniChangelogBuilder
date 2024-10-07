@@ -204,6 +204,10 @@ object SkyHanniChangelogBuilder {
 
     fun findPullRequestNameErrors(prTitle: String, changes: List<CodeChange>): List<PullRequestNameError> {
         val errors = mutableListOf<PullRequestNameError>()
+        if (changes.isEmpty()) {
+            errors.add(PullRequestNameError("No changes detected in pull request, so cannot verify title."))
+            return errors
+        }
 
         prTitlePattern.matchMatcher(prTitle) {
             val prPrefixes = group("prefix").split(" + ")
