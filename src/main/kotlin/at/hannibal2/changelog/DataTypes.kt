@@ -1,6 +1,7 @@
-package org.example
+package at.hannibal2.changelog
 
 import com.google.gson.annotations.SerializedName
+import java.util.Date
 
 data class PullRequest(
     val url: String,
@@ -16,10 +17,10 @@ data class PullRequest(
     val title: String,
     val user: User,
     val body: String?,
-    @SerializedName("created_at") val createdAt: String,
-    @SerializedName("updated_at") val updatedAt: String,
-    @SerializedName("closed_at") val closedAt: String?,
-    @SerializedName("merged_at") val mergedAt: String?,
+    @SerializedName("created_at") val createdAt: Date,
+    @SerializedName("updated_at") val updatedAt: Date,
+    @SerializedName("closed_at") val closedAt: Date?,
+    @SerializedName("merged_at") val mergedAt: Date?,
     @SerializedName("merge_commit_sha") val mergeCommitSha: String?,
     val assignee: Any?, // Change type if you have specific assignee structure
     val assignees: List<Any>, // Change type if you have specific assignees structure
@@ -37,7 +38,9 @@ data class PullRequest(
     @SerializedName("author_association") val authorAssociation: String,
     @SerializedName("auto_merge") val autoMerge: Any?, // Change type if you have specific auto merge structure
     @SerializedName("active_lock_reason") val activeLockReason: Any? // Change type if you have specific active lock reason structure
-)
+) {
+    fun prInfo() = "#$number - $title by ${user.login} ($htmlUrl)"
+}
 
 data class User(
     val login: String,
@@ -138,4 +141,29 @@ data class Repo(
     @SerializedName("git_url") val gitUrl: String,
     @SerializedName("ssh_url") val sshUrl: String,
     @SerializedName("clone_url") val cloneUrl: String,
+)
+
+data class Tag(
+    val name: String,
+    val commit: CommitInfo,
+)
+
+data class CommitInfo(
+    val sha: String,
+    val url: String
+)
+
+data class Commit(
+    val sha: String,
+    val commit: CommitData,
+)
+
+data class CommitData(
+    val author: Author,
+)
+
+data class Author(
+    val name: String,
+    val email: String,
+    val date: Date,
 )
