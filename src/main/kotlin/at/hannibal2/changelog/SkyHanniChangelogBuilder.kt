@@ -58,9 +58,6 @@ object SkyHanniChangelogBuilder {
         var wrongPrDescription = 0
         var donePrs = 0
 
-        println("${sortedPrs.count()} valid PRs found")
-        println()
-
         for (pullRequest in sortedPrs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
             if (prBody.any { it == "exclude_from_changelog" }) {
@@ -91,16 +88,17 @@ object SkyHanniChangelogBuilder {
             donePrs++
         }
 
+        TextOutputType.entries.forEach { type ->
+            printChangelog(allChanges, version, type)
+        }
+
         println()
+        println("${sortedPrs.count()} valid PRs found")
         println("Excluded PRs: $excludedPrs")
         println("PRs with wrong names: $wrongPrNames")
         println("PRs with wrong descriptions: $wrongPrDescription")
         println("Done PRs: $donePrs")
         println("Total changes found: ${allChanges.size}")
-
-        TextOutputType.entries.forEach { type ->
-            printChangelog(allChanges, version, type)
-        }
     }
 
     // todo implement tests for this
@@ -136,7 +134,7 @@ object SkyHanniChangelogBuilder {
                 val author = group("author")
 
                 if (author == "your_name_here") {
-                    errors.add(ChangelogError("Author not set in change", line))
+                    errors.add(ChangelogError("Author is not set", line))
                 }
 
                 illegalStartPattern.matchMatcher(text) {
@@ -170,7 +168,7 @@ object SkyHanniChangelogBuilder {
         }
 
         if (changes.isEmpty()) {
-            errors.add(ChangelogError("No changes detected", ""))
+            errors.add(ChangelogError("No changes detected in pull request.", ""))
         }
         return changes to errors
     }
@@ -182,23 +180,23 @@ object SkyHanniChangelogBuilder {
             errors.add(ChangelogError("Change should start with a capital letter", text))
         }
         if (!firstChar.isLetter()) {
-            errors.add(ChangelogError("Change should start with a letter", text))
+            errors.add(ChangelogError("Change should start with a letter instead of a number or special character", text))
         }
         val low = text.lowercase()
         if (low.startsWith("add ") || low.startsWith("adds ")) {
-            errors.add(ChangelogError("Change should start with 'Added' instead", text))
+            errors.add(ChangelogError("Change should start with 'Added' instead of 'Add'", text))
         }
         if (low.startsWith("fix ") || low.startsWith("fixes ")) {
-            errors.add(ChangelogError("Change should start with 'Fixed' instead", text))
+            errors.add(ChangelogError("Change should start with 'Fixed' instead of 'Fix'", text))
         }
         if (low.startsWith("improve ") || low.startsWith("improves ")) {
-            errors.add(ChangelogError("Change should start with 'Improved' instead", text))
+            errors.add(ChangelogError("Change should start with 'Improved' instead of 'Improve'", text))
         }
         if (low.startsWith("remove ") || low.startsWith("removes ")) {
-            errors.add(ChangelogError("Change should start with 'Removed' instead", text))
+            errors.add(ChangelogError("Change should start with 'Removed' instead of 'Remove'", text))
         }
         if (!text.endsWith('.')) {
-            errors.add(ChangelogError("Change should end with a period", text))
+            errors.add(ChangelogError("Change should end with a full stop", text))
         }
 
         return errors
@@ -206,6 +204,10 @@ object SkyHanniChangelogBuilder {
 
     fun findPullRequestNameErrors(prTitle: String, changes: List<CodeChange>): List<PullRequestNameError> {
         val errors = mutableListOf<PullRequestNameError>()
+        if (changes.isEmpty()) {
+            errors.add(PullRequestNameError("No changes detected in pull request, so cannot verify title."))
+            return errors
+        }
 
         prTitlePattern.matchMatcher(prTitle) {
             val prPrefixes = group("prefix").split(" + ")
@@ -338,3 +340,6 @@ fun main() {
     val version = UpdateVersion("0.27", "15")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
+
+// smart AI prompt for formatting
+// keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
