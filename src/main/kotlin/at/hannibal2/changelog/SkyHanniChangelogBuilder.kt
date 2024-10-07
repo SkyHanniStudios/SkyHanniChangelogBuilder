@@ -170,7 +170,7 @@ object SkyHanniChangelogBuilder {
         }
 
         if (changes.isEmpty()) {
-            errors.add(ChangelogError("No changes detected", ""))
+            errors.add(ChangelogError("No changes detected in pull request.", ""))
         }
         return changes to errors
     }
