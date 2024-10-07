@@ -182,20 +182,20 @@ object SkyHanniChangelogBuilder {
             errors.add(ChangelogError("Change should start with a capital letter", text))
         }
         if (!firstChar.isLetter()) {
-            errors.add(ChangelogError("Change should start with a letter", text))
+            errors.add(ChangelogError("Change should start with a letter instead of a number or special character", text))
         }
         val low = text.lowercase()
         if (low.startsWith("add ") || low.startsWith("adds ")) {
-            errors.add(ChangelogError("Change should start with 'Added' instead", text))
+            errors.add(ChangelogError("Change should start with 'Added' instead of 'Add'", text))
         }
         if (low.startsWith("fix ") || low.startsWith("fixes ")) {
-            errors.add(ChangelogError("Change should start with 'Fixed' instead", text))
+            errors.add(ChangelogError("Change should start with 'Fixed' instead of 'Fix'", text))
         }
         if (low.startsWith("improve ") || low.startsWith("improves ")) {
-            errors.add(ChangelogError("Change should start with 'Improved' instead", text))
+            errors.add(ChangelogError("Change should start with 'Improved' instead of 'Improve'", text))
         }
         if (low.startsWith("remove ") || low.startsWith("removes ")) {
-            errors.add(ChangelogError("Change should start with 'Removed' instead", text))
+            errors.add(ChangelogError("Change should start with 'Removed' instead of 'Remove'", text))
         }
         if (!text.endsWith('.')) {
             errors.add(ChangelogError("Change should end with a period", text))
