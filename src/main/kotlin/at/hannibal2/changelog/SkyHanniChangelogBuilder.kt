@@ -147,7 +147,13 @@ object SkyHanniChangelogBuilder {
                 continue@loop
             }
             changePatternNoAuthor.matchMatcher(line) {
+                val text = group("text")
                 errors.add(ChangelogError("Author is not set", line))
+
+                illegalStartPattern.matchMatcher(text) {
+                    errors.add(ChangelogError("Illegal start of change line", line))
+                }
+                errors.addAll(checkWording(text))
 
                 continue@loop
             }

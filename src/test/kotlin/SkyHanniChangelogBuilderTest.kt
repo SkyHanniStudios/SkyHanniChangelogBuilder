@@ -106,6 +106,21 @@ class SkyHanniChangelogBuilderTest {
     }
 
     @Test
+    fun `test body with no author`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "+ Added new feature",
+        )
+        val prLink = "https://example.com/pr/6"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+
+        assertEquals(2, errors.size, "Expected two errors")
+        assertEquals("Author is not set", errors[0].message)
+        assertEquals("Change should end with a full stop", errors[1].message)
+    }
+
+    @Test
     fun `test title with correct pull request title`() {
         val prTitle = "Feature: New feature"
         val prLink = "https://example.com/pr/1"
