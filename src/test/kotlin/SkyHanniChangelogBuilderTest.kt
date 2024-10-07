@@ -72,7 +72,7 @@ class SkyHanniChangelogBuilderTest {
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
         assertTrue(errors.isNotEmpty(), "Expected errors")
-        assertEquals("Author not set in change", errors[0].message)
+        assertEquals("Author is not set", errors[0].message)
         assertEquals("Extra info is not filled out", errors[1].message)
     }
 
@@ -102,7 +102,7 @@ class SkyHanniChangelogBuilderTest {
 
         assertEquals(2, errors.size, "Expected two errors")
         assertEquals("Change should start with 'Added' instead of 'Add'", errors[0].message)
-        assertEquals("Change should end with a period", errors[1].message)
+        assertEquals("Change should end with a full stop", errors[1].message)
     }
 
     @Test

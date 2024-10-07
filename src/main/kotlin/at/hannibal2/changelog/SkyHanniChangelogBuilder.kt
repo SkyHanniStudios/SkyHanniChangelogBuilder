@@ -136,7 +136,7 @@ object SkyHanniChangelogBuilder {
                 val author = group("author")
 
                 if (author == "your_name_here") {
-                    errors.add(ChangelogError("Author not set in change", line))
+                    errors.add(ChangelogError("Author is not set", line))
                 }
 
                 illegalStartPattern.matchMatcher(text) {
@@ -198,7 +198,7 @@ object SkyHanniChangelogBuilder {
             errors.add(ChangelogError("Change should start with 'Removed' instead of 'Remove'", text))
         }
         if (!text.endsWith('.')) {
-            errors.add(ChangelogError("Change should end with a period", text))
+            errors.add(ChangelogError("Change should end with a full stop", text))
         }
 
         return errors
