@@ -185,7 +185,12 @@ object SkyHanniChangelogBuilder {
             errors.add(ChangelogError("Change should start with a capital letter", text))
         }
         if (!firstChar.isLetter()) {
-            errors.add(ChangelogError("Change should start with a letter instead of a number or special character", text))
+            errors.add(
+                ChangelogError(
+                    "Change should start with a letter instead of a number or special character",
+                    text
+                )
+            )
         }
         val low = text.lowercase()
         if (low.startsWith("add ") || low.startsWith("adds ")) {
@@ -253,7 +258,11 @@ object SkyHanniChangelogBuilder {
         println(BORDER)
     }
 
-    private fun generateChangelogText(changes: List<CodeChange>, version: UpdateVersion, type: TextOutputType): List<String> {
+    private fun generateChangelogText(
+        changes: List<CodeChange>,
+        version: UpdateVersion,
+        type: TextOutputType
+    ): List<String> {
         val list = mutableListOf<String>()
         list.add("## Version ${version.asTitle}")
 
@@ -340,7 +349,7 @@ class PullRequestNameError(val message: String)
 
 class UpdateVersion(private val fullVersion: String, private val betaVersion: String) {
     val asTitle = "Version $fullVersion Beta $betaVersion"
-    val asTag ="$fullVersion.Beta.$betaVersion"
+    val asTag = "$fullVersion.Beta.$betaVersion"
 }
 
 fun main() {
