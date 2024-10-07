@@ -58,9 +58,6 @@ object SkyHanniChangelogBuilder {
         var wrongPrDescription = 0
         var donePrs = 0
 
-        println("${sortedPrs.count()} valid PRs found")
-        println()
-
         for (pullRequest in sortedPrs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
             if (prBody.any { it == "exclude_from_changelog" }) {
@@ -96,6 +93,7 @@ object SkyHanniChangelogBuilder {
         }
 
         println()
+        println("${sortedPrs.count()} valid PRs found")
         println("Excluded PRs: $excludedPrs")
         println("PRs with wrong names: $wrongPrNames")
         println("PRs with wrong descriptions: $wrongPrDescription")
