@@ -351,8 +351,8 @@ class CodeChange(val text: String, val category: PullRequestCategory, val prLink
     val extraInfo = mutableListOf<String>()
 }
 
-class ChangelogError(val message: String, val relevantLine: String) {
-    fun formatLine() = if (relevantLine.isBlank()) "" else " in text: $relevantLine"
+class ChangelogError(val message: String, private val relevantLine: String) {
+    fun formatLine() = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
 }
 
 class PullRequestNameError(val message: String)
