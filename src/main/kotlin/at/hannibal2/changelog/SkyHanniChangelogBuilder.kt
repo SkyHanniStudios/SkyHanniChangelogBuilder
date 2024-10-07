@@ -1,7 +1,7 @@
 package at.hannibal2.changelog
 
-import com.google.gson.GsonBuilder
 import at.hannibal2.changelog.Utils.matchMatcher
+import com.google.gson.GsonBuilder
 import java.util.Date
 
 object SkyHanniChangelogBuilder {
@@ -345,7 +345,7 @@ class UpdateVersion(private val fullVersion: String, private val betaVersion: St
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.27", "15")
+    val version = UpdateVersion("0.27", "17")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
 
