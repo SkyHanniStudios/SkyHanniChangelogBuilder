@@ -274,7 +274,7 @@ object SkyHanniChangelogBuilder {
         type: TextOutputType
     ): List<String> {
         val list = mutableListOf<String>()
-        list.add("## Version ${version.asTitle}")
+        list.add("## ${version.asTitle}")
 
         for (category in PullRequestCategory.entries) {
             if (type == TextOutputType.DISCORD_PUBLIC && category == PullRequestCategory.INTERNAL) continue
