@@ -80,7 +80,7 @@ object SkyHanniChangelogBuilder {
 
             if (changeErrors.isNotEmpty()) {
                 println("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { println("  - ${it.message}${it.formatLine()}") }
+                changeErrors.forEach { println("  - ${it.formatLine()}") }
                 println()
                 wrongPrDescription++
                 continue
@@ -352,7 +352,10 @@ class CodeChange(val text: String, val category: PullRequestCategory, val prLink
 }
 
 class ChangelogError(val message: String, private val relevantLine: String) {
-    fun formatLine() = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
+    fun formatLine(): String {
+        val lineText = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
+        return "$message$lineText"
+    }
 }
 
 class PullRequestNameError(val message: String)
