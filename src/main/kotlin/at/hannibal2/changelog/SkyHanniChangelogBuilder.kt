@@ -54,16 +54,17 @@ object SkyHanniChangelogBuilder {
 
         val allChanges = mutableListOf<CodeChange>()
 
-        var excludedPrs = 0
         var wrongPrNames = 0
         var wrongPrDescription = 0
         var donePrs = 0
+        val excludedPrs = mutableListOf<String>()
+
+        println()
 
         for (pullRequest in sortedPrs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
             if (prBody.any { it == "exclude_from_changelog" }) {
-                println("Excluded PR: ${pullRequest.prInfo()}")
-                excludedPrs++
+                excludedPrs.add(pullRequest.prInfo())
                 continue
             }
 
@@ -88,6 +89,9 @@ object SkyHanniChangelogBuilder {
             allChanges.addAll(changes)
             donePrs++
         }
+
+        println()
+        excludedPrs.forEach { println("Excluded PR: $it") }
 
         TextOutputType.entries.forEach { type ->
             printChangelog(allChanges, version, type)
