@@ -91,16 +91,16 @@ object SkyHanniChangelogBuilder {
             donePrs++
         }
 
+        TextOutputType.entries.forEach { type ->
+            printChangelog(allChanges, version, type)
+        }
+
         println()
         println("Excluded PRs: $excludedPrs")
         println("PRs with wrong names: $wrongPrNames")
         println("PRs with wrong descriptions: $wrongPrDescription")
         println("Done PRs: $donePrs")
         println("Total changes found: ${allChanges.size}")
-
-        TextOutputType.entries.forEach { type ->
-            printChangelog(allChanges, version, type)
-        }
     }
 
     // todo implement tests for this
@@ -338,3 +338,6 @@ fun main() {
     val version = UpdateVersion("0.27", "15")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
+
+// smart AI prompt for formatting
+// keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
