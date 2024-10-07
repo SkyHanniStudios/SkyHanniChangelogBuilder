@@ -347,7 +347,7 @@ class ChangelogError(val message: String, val relevantLine: String) {
 
 class PullRequestNameError(val message: String)
 
-class UpdateVersion(private val fullVersion: String, private val betaVersion: String) {
+class UpdateVersion(fullVersion: String, betaVersion: String) {
     val asTitle = "Version $fullVersion Beta $betaVersion"
     val asTag = "$fullVersion.Beta.$betaVersion"
 }
