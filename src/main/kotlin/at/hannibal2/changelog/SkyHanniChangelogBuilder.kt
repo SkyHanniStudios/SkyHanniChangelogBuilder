@@ -360,9 +360,21 @@ class ChangelogError(val message: String, private val relevantLine: String) {
 
 class PullRequestNameError(val message: String)
 
-class UpdateVersion(fullVersion: String, betaVersion: String) {
-    val asTitle = "Version $fullVersion Beta $betaVersion"
-    val asTag = "$fullVersion.Beta.$betaVersion"
+// Not having a full version can be used for creating the changelog between the final beta and the full version
+class UpdateVersion(fullVersion: String, betaVersion: String?) {
+    val asTitle = "Version $fullVersion${betaVersion?.let { " Beta $it" } ?: ""}"
+    val asTag = "$fullVersion${betaVersion?.let { ".Beta.$it" } ?: ""}"
+
+    constructor(versionString: String) : this(extractVersion(versionString).first, extractVersion(versionString).second)
+
+    companion object {
+        private fun extractVersion(versionString: String): Pair<String, String?> {
+            val split = versionString.split(",").map { it.trim() }
+            val fullVersion = if (split[0].startsWith("0.")) split[0] else "0.${split[0]}"
+            val betaVersion = split.getOrNull(1)
+            return fullVersion to betaVersion
+        }
+    }
 }
 
 fun main() {
