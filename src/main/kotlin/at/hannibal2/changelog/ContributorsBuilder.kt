@@ -14,15 +14,10 @@ object ContributorsBuilder {
 
     private val contributionPattern = "\\+ .*\\. - (?<name>.*) \\(.*\\)".toPattern()
 
-    fun getContributors() {
-        val clipboard = Toolkit.getDefaultToolkit().systemClipboard?.getData(DataFlavor.stringFlavor)?.toString()
-        if (clipboard == null) {
-            println("clipboard empty")
-            return
-        }
+    fun getContributors(text: String) {
 
         // Remove sub-categories and fix unnecessary break points
-        val content = clipboard.split("\n")
+        val content = text.split("\n")
             .filter { !it.startsWith("    + ") && !it.startsWith("      ") }
             .joinToString("\n")
             .replace("\n  ", " ")
@@ -83,5 +78,10 @@ object ContributorsBuilder {
 }
 
 fun main() {
-    ContributorsBuilder.getContributors()
+    val clipboard = Toolkit.getDefaultToolkit().systemClipboard?.getData(DataFlavor.stringFlavor)?.toString()
+    if (clipboard == null) {
+        println("clipboard empty")
+        return
+    }
+    ContributorsBuilder.getContributors(clipboard)
 }
