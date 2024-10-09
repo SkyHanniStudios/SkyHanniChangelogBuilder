@@ -80,7 +80,7 @@ object SkyHanniChangelogBuilder {
 
             if (changeErrors.isNotEmpty()) {
                 println("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { println("  - ${it.message}${it.formatLine()}") }
+                changeErrors.forEach { println("  - ${it.formatLine()}") }
                 println()
                 wrongPrDescription++
                 continue
@@ -229,19 +229,26 @@ object SkyHanniChangelogBuilder {
         }
 
         prTitlePattern.matchMatcher(prTitle) {
-            val prPrefixes = group("prefix").split(" + ")
+            val prefixText = group("prefix")
+
+            if (prefixText.contains("/") || prefixText.contains("&")) {
+                errors.add(PullRequestNameError("PR categories shouldn't be separated by '/' or '&', use ' + ' instead"))
+            }
+
+            val prPrefixes = prefixText.split(Regex("[+&/]")).map { it.trim() }
             val expectedCategories = changes.map { it.category }.toSet()
+            val expectedOptions = expectedCategories.joinToString { it.prPrefix }
 
             val foundCategories = prPrefixes.mapNotNull { prefix ->
                 PullRequestCategory.fromPrPrefix(prefix) ?: run {
-                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()}"))
+                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
+                            "and expected categories based on your changes are: $expectedOptions"))
                     null
                 }
             }
 
             foundCategories.forEach { category ->
                 if (category !in expectedCategories) {
-                    val expectedOptions = expectedCategories.joinToString { it.prPrefix }
                     errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
                 }
             }
@@ -352,22 +359,36 @@ class CodeChange(val text: String, val category: PullRequestCategory, val prLink
 }
 
 class ChangelogError(val message: String, private val relevantLine: String) {
-    fun formatLine() = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
+    fun formatLine(): String {
+        val lineText = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
+        return "$message$lineText"
+    }
 }
 
 class PullRequestNameError(val message: String)
 
-class UpdateVersion(fullVersion: String, betaVersion: String) {
-    val asTitle = "Version $fullVersion Beta $betaVersion"
-    val asTag = "$fullVersion.Beta.$betaVersion"
+// Not having a full version can be used for creating the changelog between the final beta and the full version
+class UpdateVersion(fullVersion: String, betaVersion: String?) {
+    val asTitle = "Version $fullVersion${betaVersion?.let { " Beta $it" } ?: ""}"
+    val asTag = "$fullVersion${betaVersion?.let { ".Beta.$it" } ?: ""}"
+
+    constructor(versionString: String) : this(extractVersion(versionString).first, extractVersion(versionString).second)
+
+    companion object {
+        private fun extractVersion(versionString: String): Pair<String, String?> {
+            val split = versionString.split(",").map { it.trim() }
+            val fullVersion = if (split[0].startsWith("0.")) split[0] else "0.${split[0]}"
+            val betaVersion = split.getOrNull(1)
+            return fullVersion to betaVersion
+        }
+    }
 }
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.27", "17")
+    val version = UpdateVersion("0.28", "1")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
 
 // smart AI prompt for formatting
 // keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
-
