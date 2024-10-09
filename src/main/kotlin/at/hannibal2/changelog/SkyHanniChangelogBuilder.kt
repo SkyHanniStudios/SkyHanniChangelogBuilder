@@ -229,19 +229,26 @@ object SkyHanniChangelogBuilder {
         }
 
         prTitlePattern.matchMatcher(prTitle) {
-            val prPrefixes = group("prefix").split(" + ")
+            val prefixText = group("prefix")
+
+            if (prefixText.contains("/") || prefixText.contains("&")) {
+                errors.add(PullRequestNameError("PR categories shouldn't be separated by '/' or '&', use ' + ' instead"))
+            }
+
+            val prPrefixes = prefixText.split(Regex("[+&/]")).map { it.trim() }
             val expectedCategories = changes.map { it.category }.toSet()
+            val expectedOptions = expectedCategories.joinToString { it.prPrefix }
 
             val foundCategories = prPrefixes.mapNotNull { prefix ->
                 PullRequestCategory.fromPrPrefix(prefix) ?: run {
-                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()}"))
+                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
+                            "and expected categories based on your changes are: $expectedOptions"))
                     null
                 }
             }
 
             foundCategories.forEach { category ->
                 if (category !in expectedCategories) {
-                    val expectedOptions = expectedCategories.joinToString { it.prPrefix }
                     errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
                 }
             }
@@ -379,8 +386,8 @@ class UpdateVersion(fullVersion: String, betaVersion: String?) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.27", "17")
-    SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
+    val version = UpdateVersion("0.28", "1")
+    SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.OPEN_PRS, version)
 }
 
 // smart AI prompt for formatting

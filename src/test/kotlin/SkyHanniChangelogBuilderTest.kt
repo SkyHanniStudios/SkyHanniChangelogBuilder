@@ -122,7 +122,7 @@ class SkyHanniChangelogBuilderTest {
 
     @Test
     fun `test title with correct pull request title`() {
-        val prTitle = "Feature: New feature"
+        val prTitle = "Feature + Fix: New feature"
         val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(largeValidInput, prLink)
@@ -142,7 +142,8 @@ class SkyHanniChangelogBuilderTest {
         val pullRequestTitleErrors = SkyHanniChangelogBuilder.findPullRequestNameErrors(prTitle, changes)
 
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
-        assertEquals("Unknown category: 'Bugfix', valid categories are: ${PullRequestCategory.validCategories()}", pullRequestTitleErrors[0].message)
+        assertEquals("Unknown category: 'Bugfix', valid categories are: ${PullRequestCategory.validCategories()} " +
+                "and expected categories based on your changes are: Feature, Fix", pullRequestTitleErrors[0].message)
     }
 
     @Test
@@ -169,5 +170,18 @@ class SkyHanniChangelogBuilderTest {
 
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
         assertEquals("PR has category 'Backend' which is not in the changelog. Expected categories: Feature, Fix", pullRequestTitleErrors[0].message)
+    }
+
+    @Test
+    fun `test title with another wrong format`() {
+        val prTitle = "Feature/Fix: Fix up the backend"
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(largeValidInput, prLink)
+
+        val pullRequestTitleErrors = SkyHanniChangelogBuilder.findPullRequestNameErrors(prTitle, changes)
+
+        assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
+        assertEquals("PR categories shouldn't be separated by '/' or '&', use ' + ' instead", pullRequestTitleErrors[0].message)
     }
 }
