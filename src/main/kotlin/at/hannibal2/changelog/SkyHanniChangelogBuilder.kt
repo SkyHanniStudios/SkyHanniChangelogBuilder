@@ -350,7 +350,7 @@ enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
     DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
-    GITHUB("  + ", { " (${it.prLink})" }),
+    GITHUB("  + ", { "(${it.prLink})" }),
     DISCORD_PUBLIC(" - ", { "" }),
 }
 
