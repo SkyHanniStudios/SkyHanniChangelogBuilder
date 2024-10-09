@@ -387,7 +387,7 @@ class UpdateVersion(fullVersion: String, betaVersion: String?) {
 fun main() {
     // todo maybe change the way version is handled
     val version = UpdateVersion("0.28", "1")
-    SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.OPEN_PRS, version)
+    SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
 
 // smart AI prompt for formatting
