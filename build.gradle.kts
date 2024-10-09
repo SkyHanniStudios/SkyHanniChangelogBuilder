@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "at.hannibal2.changelog"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
