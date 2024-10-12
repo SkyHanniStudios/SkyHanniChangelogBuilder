@@ -386,9 +386,10 @@ class UpdateVersion(fullVersion: String, betaVersion: String?) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.28", "1")
+    val version = UpdateVersion("0.28", "2")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
 
 // smart AI prompt for formatting
 // keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
+
