@@ -63,7 +63,7 @@ object SkyHanniChangelogBuilder {
 
         for (pullRequest in sortedPrs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
-            if (prBody.any { it == "exclude_from_changelog" }) {
+            if (prBody.any { it == "exclude_from_changelog" || it == "ignore_from_changelog" }) {
                 excludedPrs.add(pullRequest.prInfo())
                 continue
             }
@@ -93,7 +93,7 @@ object SkyHanniChangelogBuilder {
         println()
         excludedPrs.forEach { println("Excluded PR: $it") }
 
-        TextOutputType.entries.forEach { type ->
+        for (type in TextOutputType.entries) {
             printChangelog(allChanges, version, type)
         }
 
@@ -386,7 +386,7 @@ class UpdateVersion(fullVersion: String, betaVersion: String?) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.28", "2")
+    val version = UpdateVersion("0.28", "11")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
 
