@@ -120,6 +120,21 @@ class SkyHanniChangelogBuilderTest {
         assertEquals("Change should end with a full stop", errors[1].message)
     }
 
+
+    @Test
+    fun `test body should not have unknown lines after changes are declared`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "+ Added new feature. - John Doe",
+            "This line should error"
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+        assertEquals(1, errors.size, "Expected one error")
+        assertEquals("Unknown line after changes started being declared", errors[0].message)
+    }
+
     @Test
     fun `test title with correct pull request title`() {
         val prTitle = "Feature + Fix: New feature"

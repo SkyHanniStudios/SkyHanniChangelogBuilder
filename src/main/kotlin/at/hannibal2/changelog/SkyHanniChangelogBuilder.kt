@@ -180,6 +180,8 @@ object SkyHanniChangelogBuilder {
                 change.extraInfo.add(text)
                 continue@loop
             }
+
+            errors.add(ChangelogError("Unknown line after changes started being declared", line))
         }
 
         if (changes.isEmpty() && errors.isEmpty()) {
