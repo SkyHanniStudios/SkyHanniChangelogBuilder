@@ -63,7 +63,7 @@ object SkyHanniChangelogBuilder {
 
         for (pullRequest in sortedPrs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
-            if (prBody.any { it == "exclude_from_changelog" }) {
+            if (prBody.any { it == "exclude_from_changelog" || it == "ignore_from_changelog" }) {
                 excludedPrs.add(pullRequest.prInfo())
                 continue
             }
@@ -93,7 +93,7 @@ object SkyHanniChangelogBuilder {
         println()
         excludedPrs.forEach { println("Excluded PR: $it") }
 
-        TextOutputType.entries.forEach { type ->
+        for (type in TextOutputType.entries) {
             printChangelog(allChanges, version, type)
         }
 
@@ -352,7 +352,7 @@ enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
     DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
-    GITHUB("  + ", { " (${it.prLink})" }),
+    GITHUB("  + ", { "(${it.prLink})" }),
     DISCORD_PUBLIC(" - ", { "" }),
 }
 
@@ -388,9 +388,10 @@ class UpdateVersion(fullVersion: String, betaVersion: String?) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.28", "1")
+    val version = UpdateVersion("0.28", "11")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
 
 // smart AI prompt for formatting
 // keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
+
