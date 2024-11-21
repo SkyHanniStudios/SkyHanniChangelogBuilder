@@ -52,7 +52,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog UnknownCategory",
             "+ Added new feature. - John Doe"
         )
-        val prLink = "https://example.com/pr/2"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -67,7 +67,7 @@ class SkyHanniChangelogBuilderTest {
             "+ Added new feature. - your_name_here",
             "    * Extra info."
         )
-        val prLink = "https://example.com/pr/3"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -82,7 +82,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog New Features",
             "+ - Added new feature. - John Doe"
         )
-        val prLink = "https://example.com/pr/4"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -96,7 +96,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog New Features",
             "+ Add new feature - John Doe",
         )
-        val prLink = "https://example.com/pr/5"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -111,7 +111,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog New Features",
             "+ Added new feature",
         )
-        val prLink = "https://example.com/pr/6"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
