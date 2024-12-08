@@ -136,6 +136,23 @@ class SkyHanniChangelogBuilderTest {
     }
 
     @Test
+    fun `test body with additional spaces`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "+ Added new feature.   -     John Doe",
+            "    * More info.    ",
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+
+        println("changes: ${changes.map { it.text }}")
+        println("errors: ${errors.map { it.message }}")
+
+        assertTrue(errors.isEmpty(), "Expected no errors")
+    }
+
+    @Test
     fun `test title with correct pull request title`() {
         val prTitle = "Feature + Fix: New feature"
         val prLink = "https://example.com/pr/1"

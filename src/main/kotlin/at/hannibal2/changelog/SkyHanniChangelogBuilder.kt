@@ -12,7 +12,7 @@ object SkyHanniChangelogBuilder {
     private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
-    private val changePattern = "\\+ (?<text>.+)\\s+-\\s+(?<author>.+)".toPattern()
+    private val changePattern = "\\+ (?<text>.+?) - (?<author>.+)".toPattern()
     private val changePatternNoAuthor = "\\+ (?<text>.+)".toPattern()
     private val extraInfoPattern = " {4}\\* (?<text>.+)".toPattern()
     private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
@@ -135,8 +135,8 @@ object SkyHanniChangelogBuilder {
             val category = currentCategory ?: continue
 
             changePattern.matchMatcher(line) {
-                val text = group("text")
-                val author = group("author")
+                val text = group("text").trim()
+                val author = group("author").trim()
 
                 if (author == "your_name_here") {
                     errors.add(ChangelogError("Author is not set", line))
@@ -151,7 +151,7 @@ object SkyHanniChangelogBuilder {
                 continue@loop
             }
             changePatternNoAuthor.matchMatcher(line) {
-                val text = group("text")
+                val text = group("text").trim()
                 errors.add(ChangelogError("Author is not set", line))
 
                 illegalStartPattern.matchMatcher(text) {
@@ -167,7 +167,7 @@ object SkyHanniChangelogBuilder {
                     errors.add(ChangelogError("Extra info without a change", line))
                 }
                 val change = currentChange ?: continue@loop
-                val text = group("text")
+                val text = group("text").trim()
                 if (text == "Extra info.") {
                     errors.add(ChangelogError("Extra info is not filled out", line))
                 }
