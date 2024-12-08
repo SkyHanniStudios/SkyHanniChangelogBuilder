@@ -12,7 +12,7 @@ object SkyHanniChangelogBuilder {
     private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
-    private val changePattern = "\\+ (?<text>.+) - (?<author>.+)".toPattern()
+    private val changePattern = "\\+ (?<text>.+)\\s+-\\s+(?<author>.+)".toPattern()
     private val changePatternNoAuthor = "\\+ (?<text>.+)".toPattern()
     private val extraInfoPattern = " {4}\\* (?<text>.+)".toPattern()
     private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
