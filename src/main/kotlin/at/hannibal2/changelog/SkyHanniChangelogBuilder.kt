@@ -106,7 +106,6 @@ object SkyHanniChangelogBuilder {
         println("Total changes found: ${allChanges.size}")
     }
 
-    // todo implement tests for this
     fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
         val changes = mutableListOf<CodeChange>()
         val errors = mutableListOf<ChangelogError>()
@@ -337,8 +336,8 @@ enum class PullRequestCategory(val changelogName: String, val prPrefix: String) 
 }
 
 enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
-    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=150", { it.mergedAt ?: Date(0) }),
-    OPEN_PRS("state=open&sort=updated&direction=desc&per_page=150", { it.updatedAt }),
+    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=100", { it.mergedAt ?: Date(0) }),
+    OPEN_PRS("state=open&sort=updated&direction=desc&per_page=100", { it.updatedAt }),
 }
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
@@ -370,4 +369,3 @@ fun main() {
 
 // smart AI prompt for formatting
 // keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
-
