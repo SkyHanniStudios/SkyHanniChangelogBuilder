@@ -287,7 +287,7 @@ object SkyHanniChangelogBuilder {
             }
             for (change in relevantChanges) {
                 val changePrefix = getPrefix(category, type)
-                list.add("$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}")
+                list.add("$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim())
                 for (extraInfo in change.extraInfo) {
                     list.add("${type.extraInfoPrefix} $extraInfo")
                 }
@@ -343,7 +343,7 @@ enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
     DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
-    GITHUB("  + ", { " (${it.prLink})" }),
+    GITHUB("  + ", { "(${it.prLink})" }),
     DISCORD_PUBLIC(" - ", { "" }),
 }
 
@@ -364,7 +364,7 @@ class UpdateVersion(fullVersion: String, betaVersion: String) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.27", "17")
+    val version = UpdateVersion("0.28", "21")
     SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
 }
 
