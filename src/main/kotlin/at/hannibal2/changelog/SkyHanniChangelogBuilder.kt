@@ -1,397 +1,360 @@
-package at.hannibal2.changelog
+package org.example
 
-import at.hannibal2.changelog.Utils.matchMatcher
+import at.hannibal2.changelog.PullRequest
 import com.google.gson.GsonBuilder
-import java.util.Date
+import com.google.gson.JsonArray
+import java.net.URL
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
-object SkyHanniChangelogBuilder {
+enum class Category(val changeLogName: String, val prTitle: String) {
+    NEW("New Features", "Feature"),
+    IMPROVEMENT("Improvements", "Improvement"),
+    FIX("Fixes", "Fix"),
+    INTERNAL("Technical Details", "Backend"), REMOVED("Removed Features", "Removed Feature"), ;
+}
 
-    private const val GITHUB_API_URL = "https://api.github.com/repos/hannibal002/SkyHanni"
-    private const val GITHUB_URL = "https://github.com/hannibal002/SkyHanni"
-    private const val BORDER = "================================================================================="
-    private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
+val categoryPattern = "## Changelog (?<category>.*)".toPattern()
+val changePattern = "\\+ (?<text>.*) - (?<author>.*)".toPattern()
+val extraInfoPattern = " {4}\\* (?<text>.*)".toPattern()
+val illegalStartPattern = "^[-=*+ ].*".toPattern()
 
-    private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
-    private val changePattern = "\\+ (?<text>.+?) - (?<author>.+)".toPattern()
-    private val changePatternNoAuthor = "\\+ (?<text>.+)".toPattern()
-    private val extraInfoPattern = " {4}\\* (?<text>.+)".toPattern()
-    private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
-    private val illegalStartPattern = "^[-=*+ ].*".toPattern()
+fun getTextFromUrl(urlString: String): List<String> {
+    val url = URL(urlString)
+    val connection = url.openConnection()
+    val inputStream = connection.getInputStream()
+    val text = mutableListOf<String>()
 
-    private fun fetchPullRequests(whatToFetch: WhatToFetch): List<PullRequest> {
-        val url = "$GITHUB_API_URL/pulls?${whatToFetch.url}"
-        val jsonString = Utils.getTextFromUrl(url).joinToString("\n")
-        return gson.fromJson(jsonString, Array<PullRequest>::class.java).toList()
+    inputStream.bufferedReader().useLines { lines ->
+        lines.forEach {
+            text.add(it)
+        }
     }
 
-    private fun getDateOfMostRecentTag(): Date {
-        val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
-        val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
-        val mostRecentTag = tags.first()
+    return text
+}
 
-        val tagCommitUrl = mostRecentTag.commit.url
+enum class WhatToDo {
+    NEXT_BETA, OPEN_PRS, ;
+}
 
-        val commitJsonString = Utils.getTextFromUrl(tagCommitUrl).joinToString("\n")
-        val commit = gson.fromJson(commitJsonString, Commit::class.java)
+fun main() {
+    val firstPr = 3087
+    val hideWhenError = true
+    val fullVersion = "0.28"
+    val beta = 21
 
-        return commit.commit.author.date
+    val whatToDo = WhatToDo.NEXT_BETA
+//    val whatToDo = WhatToDo.OPEN_PRS
+
+    @Suppress("KotlinConstantConditions") val url = when (whatToDo) {
+        WhatToDo.NEXT_BETA -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=closed&sort=updated&direction=desc&per_page=150"
+        WhatToDo.OPEN_PRS -> "https://api.github.com/repos/hannibal002/SkyHanni/pulls?state=open&sort=updated&direction=desc&per_page=150"
     }
 
-    private fun filterOnlyRelevantPrs(prs: List<PullRequest>): List<PullRequest> {
-        val dateOfMostRecentTag = getDateOfMostRecentTag()
-        return prs.filter { it.mergedAt != null && it.mergedAt > dateOfMostRecentTag }
-    }
+    val data = getTextFromUrl(url).joinToString("")
+    val gson = GsonBuilder().create()
+    val fromJson = gson.fromJson(data, JsonArray::class.java)
+    val prs = fromJson.map { gson.fromJson(it, PullRequest::class.java) }
+    readPrs(prs, firstPr, hideWhenError, whatToDo, fullVersion, beta)
+}
 
-    fun generateChangelog(whatToFetch: WhatToFetch, version: UpdateVersion) {
-        val foundPrs = fetchPullRequests(whatToFetch)
-        val relevantPrs = if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
-            filterOnlyRelevantPrs(foundPrs)
-        } else {
-            foundPrs.filter { !it.draft }
+fun readPrs(
+    prs: List<PullRequest>,
+    firstPr: Int,
+    hideWhenError: Boolean,
+    whatToDo: WhatToDo,
+    fullVersion: String,
+    beta: Int,
+) {
+    val allChanges = mutableListOf<Change>()
+    val errors = mutableListOf<String>()
+    var excluded = 0
+    var done = 0
+    var wrongPrName = 0
+    // TODO find better solution for this sorting logic
+    val filtered = when (whatToDo) {
+        WhatToDo.NEXT_BETA -> prs.filter { it.mergedAt != null }.map { it to it.mergedAt }
+
+        WhatToDo.OPEN_PRS -> prs.map { it to it.updatedAt }
+
+    }.map { it.first to Long.MAX_VALUE - (it.second?.toInstant()?.toEpochMilli() ?: 0L) }.filter { !it.first.draft }
+        .sortedBy { it.second }.map { it.first }
+
+    println("")
+    var breakNext = false
+    for (pr in filtered) {
+        if (breakNext) break
+        val number = pr.number
+        val prLink = pr.htmlUrl
+        val body = pr.body
+        val title = pr.title
+        if (whatToDo == WhatToDo.NEXT_BETA && number == firstPr) {
+            breakNext = true
         }
 
-        val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
+        val description = body?.lines() ?: emptyList()
+        // ignore
+        if (description.any { it == "exclude_from_changelog" }) {
+            println("")
+            println("Excluded #$number ($prLink)")
 
-        val allChanges = mutableListOf<CodeChange>()
-
-        var wrongPrNames = 0
-        var wrongPrDescription = 0
-        var donePrs = 0
-        val excludedPrs = mutableListOf<String>()
-
-        println()
-
-        for (pullRequest in sortedPrs) {
-            val prBody = pullRequest.body?.lines() ?: emptyList()
-            if (prBody.any { it == "exclude_from_changelog" || it == "ignore_from_changelog" }) {
-                excludedPrs.add(pullRequest.prInfo())
-                continue
-            }
-
-            val (changes, changeErrors) = findChanges(prBody, pullRequest.htmlUrl)
-            val titleErrors = findPullRequestNameErrors(pullRequest.title, changes)
-
-            if (titleErrors.isNotEmpty()) {
-                println("PR has incorrect name: ${pullRequest.prInfo()}")
-                titleErrors.forEach { println("  - ${it.message}") }
-                println()
-                wrongPrNames++
-            }
-
-            if (changeErrors.isNotEmpty()) {
-                println("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { println("  - ${it.formatLine()}") }
-                println()
-                wrongPrDescription++
-                continue
-            }
-
-            allChanges.addAll(changes)
-            donePrs++
+            excluded++
+            continue
         }
-
-        println()
-        excludedPrs.forEach { println("Excluded PR: $it") }
-
-        for (type in TextOutputType.entries) {
-            printChangelog(allChanges, version, type)
+        try {
+            val newChanges = parseChanges(description, prLink)
+            if (hasWrongPrName(prLink, title, newChanges)) {
+                wrongPrName++
+            }
+            allChanges.addAll(newChanges)
+            done++
+        } catch (t: Throwable) {
+            errors.add("Error in #$number ($prLink)\n${t.message}")
+            if (hasWrongPrName(prLink, title, emptyList())) {
+                wrongPrName++
+            }
         }
+    }
+    println("")
 
-        println()
-        println("${sortedPrs.count()} valid PRs found")
-        println("Excluded PRs: ${excludedPrs.size}")
-        println("PRs with wrong names: $wrongPrNames")
-        println("PRs with wrong descriptions: $wrongPrDescription")
-        println("Done PRs: $donePrs")
-        println("Total changes found: ${allChanges.size}")
+    for (error in errors) {
+        println(" ")
+        println(error)
     }
 
-    // todo implement tests for this
-    fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
-        val changes = mutableListOf<CodeChange>()
-        val errors = mutableListOf<ChangelogError>()
+    if (errors.isEmpty() || !hideWhenError) {
+        for (type in OutputType.entries) {
+            if (type == OutputType.DISCORD_INTERNAL) continue
+            print(allChanges, type, fullVersion, beta)
+        }
+    }
+    println("")
+    if (excluded > 0) {
+        println("Excluded $excluded PRs.")
+    }
+    if (errors.isNotEmpty()) {
+        println("Found ${errors.size} PRs with errors!")
+    }
+    if (wrongPrName > 0) {
+        println("Found $wrongPrName PRs with wrong names!")
+    }
+    println("Loaded $done PRs correctly.")
+}
 
-        var currentCategory: PullRequestCategory? = null
-        var currentChange: CodeChange? = null
+fun hasWrongPrName(prLink: String, title: String, newChanges: List<Change>): Boolean {
+    val hasFix = newChanges.any { it.category == Category.FIX }
+    for (category in Category.entries) {
+        if (newChanges.any { it.category == category }) {
+            var start = category.prTitle
+            if (hasFix && category != Category.FIX) {
+                start += " + Fix"
+            }
+            start += ": "
+            val wrongName = !title.startsWith(start)
+            if (wrongName) {
+                println("wrong pr title!")
+                println("found: '$title'")
+                println("should start with $start")
+                println("link: $prLink")
+                println(" ")
+            }
+            return wrongName
+        }
+    }
 
-        loop@ for (line in prBody) {
-            if (line.isBlank()) {
-                currentCategory = null
+    val prefix = "Wrong/broken Changelog: "
+    return !title.startsWith(prefix)
+}
+
+enum class OutputType {
+    DISCORD_INTERNAL,
+    GITHUB,
+    DISCORD_PUBLIC,
+}
+
+private fun print(
+    allChanges: List<Change>,
+    outputType: OutputType,
+    fullVersion: String,
+    beta: Int,
+) {
+    val extraInfoPrefix = when (outputType) {
+        OutputType.DISCORD_PUBLIC -> " = "
+        OutputType.GITHUB -> "   + "
+        OutputType.DISCORD_INTERNAL -> " - "
+    }
+    val list = createPrint(outputType, allChanges, extraInfoPrefix, fullVersion, beta)
+    val border = "================================================================================="
+    println("")
+    println("outputType ${outputType.name.lowercase()}:")
+    val totalLength = list.sumOf { it.length } + list.size - 1
+    if (outputType != OutputType.GITHUB) {
+        println("$totalLength/2000 characters used")
+    }
+    println(border)
+    for (line in list) {
+        println(line)
+    }
+    println(border)
+}
+
+private fun createPrint(
+    outputType: OutputType,
+    allChanges: List<Change>,
+    extraInfoPrefix: String,
+    fullVersion: String,
+    beta: Int,
+): MutableList<String> {
+    val list = mutableListOf<String>()
+    list.add("## Version $fullVersion Beta $beta")
+
+    for (category in Category.entries) {
+        if (outputType == OutputType.DISCORD_PUBLIC && category == Category.INTERNAL) continue
+        val changes = allChanges.filter { it.category == category }
+        if (changes.isEmpty()) continue
+        list.add("### " + category.changeLogName)
+        if (outputType == OutputType.DISCORD_PUBLIC) {
+            list.add("```diff")
+        }
+        for (change in changes) {
+            val pr = when (outputType) {
+                OutputType.DISCORD_PUBLIC -> ""
+                OutputType.GITHUB -> " (${change.prLink})"
+                OutputType.DISCORD_INTERNAL -> " [PR](<${change.prLink}>)"
+            }
+            val changePrefix = getChangePrefix(category, outputType)
+            list.add("$changePrefix${change.text} - ${change.author}$pr")
+            for (s in change.extraInfo) {
+                list.add("$extraInfoPrefix$s")
+            }
+        }
+        if (outputType == OutputType.DISCORD_PUBLIC) {
+            list.add("```")
+        }
+    }
+    if (outputType == OutputType.DISCORD_PUBLIC) {
+        val root = "https://github.com/hannibal002/SkyHanni"
+        val releaseLink = "$root/releases/tag/$fullVersion.Beta.$beta>"
+        list.add("For a full changelog, including technical details, see the [GitHub release](<$releaseLink)")
+
+        val downloadLink = "$root/releases/download/$fullVersion.Beta.$beta/SkyHanni-mc1.8.9-$fullVersion.Beta.$beta.jar"
+        list.add("Download link: $downloadLink")
+    }
+
+    return list
+}
+
+fun getChangePrefix(category: Category, outputType: OutputType): String = when (outputType) {
+    OutputType.DISCORD_INTERNAL -> "- "
+    OutputType.GITHUB -> "+ "
+    OutputType.DISCORD_PUBLIC -> when (category) {
+        Category.NEW -> "+ "
+        Category.IMPROVEMENT -> "+ "
+        Category.FIX -> "~ "
+        Category.REMOVED -> "- "
+        Category.INTERNAL -> error("internal not in discord public")
+    }
+}
+
+inline fun <T> Pattern.matchMatcher(text: String, consumer: Matcher.() -> T) =
+    matcher(text).let { if (it.matches()) consumer(it) else null }
+
+fun checkWording(text: String) {
+    val first = text.first()
+    if (text.isNotEmpty() && !first.isUpperCase() && first.lowercase() != first.uppercase()) {
+        error("should start with uppercase")
+    }
+    val low = text.lowercase()
+    if (low.startsWith("add ") || low.startsWith("adds ")) {
+        error(" use 'Added'")
+    }
+    if (low.startsWith("fix ") || low.startsWith("fixes ")) {
+        error(" use 'Fixed'")
+    }
+    if (low.startsWith("improve ") || low.startsWith("improves ")) {
+        error(" use 'Improved'")
+    }
+    if (low.startsWith("remove ") || low.startsWith("removes ")) {
+        error(" use 'Removed'")
+    }
+    if (!text.endsWith(".")) {
+        error("should end with a dot")
+    }
+}
+
+@Suppress("IMPLICIT_NOTHING_TYPE_ARGUMENT_IN_RETURN_POSITION")
+fun parseChanges(
+    description: List<String>,
+    prLink: String,
+): List<Change> {
+    var currentCategory: Category? = null
+    var currentChange: Change? = null
+    val changes = mutableListOf<Change>()
+
+    for (line in description) {
+        try {
+            if (line.trim().isEmpty()) {
                 currentChange = null
+                currentCategory = null
                 continue
             }
 
             categoryPattern.matchMatcher(line) {
                 val categoryName = group("category")
-
-                currentCategory = PullRequestCategory.fromChangelogName(categoryName)
-                if (currentCategory == null) {
-                    errors.add(ChangelogError("Unknown category: $categoryName", line))
-                }
-
-                continue@loop
+                currentCategory = getCategoryByLogName(categoryName) ?: error("unknown category: '$categoryName'")
+                currentChange = null
+                continue
             }
 
             val category = currentCategory ?: continue
 
             changePattern.matchMatcher(line) {
-                val text = group("text").trim()
-                val author = group("author").trim()
-
+                val author = group("author")
                 if (author == "your_name_here") {
-                    errors.add(ChangelogError("Author is not set", line))
+                    error("no author name")
                 }
-
-                illegalStartPattern.matchMatcher(text) {
-                    errors.add(ChangelogError("Illegal start of change line", line))
+                val text = group("text")
+                if (illegalStartPattern.matcher(text).matches()) {
+                    error("illegal start at change: '$text'")
                 }
-                errors.addAll(checkWording(text))
-
-                currentChange = CodeChange(text, category, prLink, author).also { changes.add(it) }
-                continue@loop
-            }
-            changePatternNoAuthor.matchMatcher(line) {
-                val text = group("text").trim()
-                errors.add(ChangelogError("Author is not set", line))
-
-                illegalStartPattern.matchMatcher(text) {
-                    errors.add(ChangelogError("Illegal start of change line", line))
+                checkWording(text)
+                currentChange = Change(text, category, prLink, author).also {
+                    changes.add(it)
                 }
-                errors.addAll(checkWording(text))
-
-                continue@loop
+                continue
             }
 
             extraInfoPattern.matchMatcher(line) {
-                if (currentChange == null) {
-                    errors.add(ChangelogError("Extra info without a change", line))
+                val change = currentChange ?: error("Found extra info without change: '$line'")
+                val text = group("text")
+                if (illegalStartPattern.matcher(text).matches()) {
+                    error("illegal start at extra info: '$text'")
                 }
-                val change = currentChange ?: continue@loop
-                val text = group("text").trim()
-                if (text == "Extra info.") {
-                    errors.add(ChangelogError("Extra info is not filled out", line))
-                }
-
-                illegalStartPattern.matchMatcher(text) {
-                    errors.add(ChangelogError("Illegal start of extra info line", line))
-                }
-                errors.addAll(checkWording(text))
-
+                checkWording(text)
                 change.extraInfo.add(text)
-                continue@loop
+                continue
             }
-
-            errors.add(ChangelogError("Unknown line after changes started being declared", line))
+        } catch (e: IllegalStateException) {
+            error("error in line '$line' (${e.message})")
         }
-
-        if (changes.isEmpty() && errors.isEmpty()) {
-            errors.add(ChangelogError("No changes detected in this pull request", ""))
-        }
-        return changes to errors
+        error("found unexpected line: '$line'")
     }
 
-    private fun checkWording(text: String): List<ChangelogError> {
-        val errors = mutableListOf<ChangelogError>()
-        val firstChar = text.first()
-        if (firstChar.isLowerCase()) {
-            errors.add(ChangelogError("Change should start with a capital letter", text))
-        }
-        if (!firstChar.isLetter()) {
-            errors.add(
-                ChangelogError(
-                    "Change should start with a letter instead of a number or special character",
-                    text
-                )
-            )
-        }
-        val low = text.lowercase()
-        if (low.startsWith("add ") || low.startsWith("adds ")) {
-            errors.add(ChangelogError("Change should start with 'Added' instead of 'Add'", text))
-        }
-        if (low.startsWith("fix ") || low.startsWith("fixes ")) {
-            errors.add(ChangelogError("Change should start with 'Fixed' instead of 'Fix'", text))
-        }
-        if (low.startsWith("improve ") || low.startsWith("improves ")) {
-            errors.add(ChangelogError("Change should start with 'Improved' instead of 'Improve'", text))
-        }
-        if (low.startsWith("remove ") || low.startsWith("removes ")) {
-            errors.add(ChangelogError("Change should start with 'Removed' instead of 'Remove'", text))
-        }
-        if (!text.endsWith('.')) {
-            errors.add(ChangelogError("Change should end with a full stop", text))
-        }
-
-        return errors
+    if (changes.isEmpty()) {
+        error("no changes found")
     }
 
-    fun findPullRequestNameErrors(prTitle: String, changes: List<CodeChange>): List<PullRequestNameError> {
-        val errors = mutableListOf<PullRequestNameError>()
-        if (changes.isEmpty()) {
-            return errors
-        }
-
-        prTitlePattern.matchMatcher(prTitle) {
-            val prefixText = group("prefix")
-
-            if (prefixText.contains("/") || prefixText.contains("&")) {
-                errors.add(PullRequestNameError("PR categories shouldn't be separated by '/' or '&', use ' + ' instead"))
-            }
-
-            val prPrefixes = prefixText.split(Regex("[+&/]")).map { it.trim() }
-            val expectedCategories = changes.map { it.category }.toSet()
-            val expectedOptions = expectedCategories.joinToString { it.prPrefix }
-
-            val foundCategories = prPrefixes.mapNotNull { prefix ->
-                PullRequestCategory.fromPrPrefix(prefix) ?: run {
-                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
-                            "and expected categories based on your changes are: $expectedOptions"))
-                    null
-                }
-            }
-
-            foundCategories.forEach { category ->
-                if (category !in expectedCategories) {
-                    errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
-                }
-            }
-            return errors
-        }
-
-        errors.add(PullRequestNameError("PR title does not match the expected format of 'Category: Title'"))
-        return errors
-    }
-
-    // todo add indicators of where to copy paste if over 2000 characters
-    private fun printChangelog(changes: List<CodeChange>, version: UpdateVersion, type: TextOutputType) {
-        val text = generateChangelogText(changes, version, type)
-
-        println("")
-        println("Output type: $type")
-
-        if (type != TextOutputType.GITHUB) {
-            val totalLength = text.sumOf { it.length } + text.size - 1
-            println("$totalLength/2000 characters used")
-        }
-        println(BORDER)
-        text.forEach { println(it) }
-        println(BORDER)
-    }
-
-    private fun generateChangelogText(
-        changes: List<CodeChange>,
-        version: UpdateVersion,
-        type: TextOutputType
-    ): List<String> {
-        val list = mutableListOf<String>()
-        list.add("## ${version.asTitle}")
-
-        for (category in PullRequestCategory.entries) {
-            if (type == TextOutputType.DISCORD_PUBLIC && category == PullRequestCategory.INTERNAL) continue
-
-            val relevantChanges = changes.filter { it.category == category }
-            if (relevantChanges.isEmpty()) continue
-            list.add("### " + category.changelogName)
-            if (type == TextOutputType.DISCORD_PUBLIC) {
-                list.add("```diff")
-            }
-            for (change in relevantChanges) {
-                val changePrefix = getPrefix(category, type)
-                list.add("$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}")
-                for (extraInfo in change.extraInfo) {
-                    list.add("${type.extraInfoPrefix} $extraInfo")
-                }
-            }
-            if (type == TextOutputType.DISCORD_PUBLIC) {
-                list.add("```")
-            }
-        }
-
-        if (type == TextOutputType.DISCORD_PUBLIC) {
-            val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
-            list.add("For more details, see the [full changelog](<$releaseLink>)")
-            val downloadLink = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}.jar"
-            list.add("Download link: $downloadLink")
-        }
-
-        return list
-    }
-
-    private fun getPrefix(category: PullRequestCategory, type: TextOutputType): String = when (type) {
-        TextOutputType.DISCORD_INTERNAL -> "-"
-        TextOutputType.GITHUB -> "+"
-        TextOutputType.DISCORD_PUBLIC -> when (category) {
-            PullRequestCategory.FEATURE -> "+"
-            PullRequestCategory.IMPROVEMENT -> "+"
-            PullRequestCategory.FIX -> "~"
-            PullRequestCategory.INTERNAL -> ""
-            PullRequestCategory.REMOVAL -> "-"
-        }
-    }
+    return changes
 }
 
-enum class PullRequestCategory(val changelogName: String, val prPrefix: String) {
-    FEATURE("New Features", "Feature"),
-    IMPROVEMENT("Improvements", "Improvement"),
-    FIX("Fixes", "Fix"),
-    INTERNAL("Technical Details", "Backend"),
-    REMOVAL("Removed Features", "Remove"),
-    ;
+fun getCategoryByLogName(name: String): Category? = Category.entries.find { it.changeLogName == name }
 
-    companion object {
-        fun fromChangelogName(changelogName: String) = entries.firstOrNull { it.changelogName == changelogName }
-        fun fromPrPrefix(prPrefix: String) = entries.firstOrNull { it.prPrefix == prPrefix }
+//class Category(val name: String)
 
-        fun validCategories() = entries.joinToString { it.prPrefix }
-    }
-}
-
-enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
-    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=150", { it.mergedAt ?: Date(0) }),
-    OPEN_PRS("state=open&sort=updated&direction=desc&per_page=150", { it.updatedAt }),
-}
-
-enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
-    DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
-    GITHUB("  + ", { "(${it.prLink})" }),
-    DISCORD_PUBLIC(" - ", { "" }),
-}
-
-class CodeChange(val text: String, val category: PullRequestCategory, val prLink: String, val author: String) {
+class Change(val text: String, val category: Category, val prLink: String, val author: String) {
     val extraInfo = mutableListOf<String>()
 }
-
-class ChangelogError(val message: String, private val relevantLine: String) {
-    fun formatLine(): String {
-        val lineText = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
-        return "$message$lineText"
-    }
-}
-
-class PullRequestNameError(val message: String)
-
-// Not having a full version can be used for creating the changelog between the final beta and the full version
-class UpdateVersion(fullVersion: String, betaVersion: String?) {
-    val asTitle = "Version $fullVersion${betaVersion?.let { " Beta $it" } ?: ""}"
-    val asTag = "$fullVersion${betaVersion?.let { ".Beta.$it" } ?: ""}"
-
-    constructor(versionString: String) : this(extractVersion(versionString).first, extractVersion(versionString).second)
-
-    companion object {
-        private fun extractVersion(versionString: String): Pair<String, String?> {
-            val split = versionString.split(",").map { it.trim() }
-            val fullVersion = if (split[0].startsWith("0.")) split[0] else "0.${split[0]}"
-            val betaVersion = split.getOrNull(1)
-            return fullVersion to betaVersion
-        }
-    }
-}
-
-fun main() {
-    // todo maybe change the way version is handled
-    val version = UpdateVersion("0.28", "11")
-    SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
-}
-
-// smart AI prompt for formatting
-// keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
+// smart ai prompt for formatting
+// I send you the changelog of a skyhanni version, a skyblock mod, below. do not touch the formatting, especially in the url/the name of the dev at the end of some lines.  do not make the sentences overly wording and try to compact it as mush as possible without losing information. additionally find typos/grammatical errors and fix them.  suggest better wording if applicable. keep the sentence beginning as "added", "fixed", etc. send me the whole text in one code block as output.
 
