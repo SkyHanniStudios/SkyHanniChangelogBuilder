@@ -1,6 +1,7 @@
 package at.hannibal2.changelog
 
 import java.net.URL
+import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
@@ -14,4 +15,5 @@ object Utils {
             lines.toList()
         }
 
+    fun Date.offsetMinute() = Date(time + 60 * 1000)
 }

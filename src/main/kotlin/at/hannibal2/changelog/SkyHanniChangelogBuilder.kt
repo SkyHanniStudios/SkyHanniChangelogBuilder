@@ -1,6 +1,7 @@
 package at.hannibal2.changelog
 
 import at.hannibal2.changelog.Utils.matchMatcher
+import at.hannibal2.changelog.Utils.offsetMinute
 import com.google.gson.GsonBuilder
 import java.util.*
 
@@ -51,9 +52,9 @@ object SkyHanniChangelogBuilder {
             val nextTagCommitUrl = previousTag.commit.url
             val nextTagCommitJsonString = Utils.getTextFromUrl(nextTagCommitUrl).joinToString("\n")
             val nextTagCommit = gson.fromJson(nextTagCommitJsonString, Commit::class.java)
-            commit.commit.author.date to nextTagCommit.commit.author.date
+            commit.commit.author.date.offsetMinute() to nextTagCommit.commit.author.date.offsetMinute()
         } else {
-            Date() to commit.commit.author.date
+            Date().offsetMinute() to commit.commit.author.date.offsetMinute()
         }
     }
 
@@ -386,7 +387,7 @@ class UpdateVersion(fullVersion: String, betaVersion: String) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.28", "19")
+    var version = UpdateVersion("0.28", "17")
 
     /**
      * If you want to generate a changelog for a specific previous version,
@@ -399,14 +400,15 @@ fun main() {
      * Will be in the format of full version, beta version
      */
     // todo allow this to work with full versions
-//    val specificPreviousVersion: UpdateVersion? = null
-    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "19")
+    val specificPreviousVersion: UpdateVersion? = null
+//    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "21")
 
     var whatToFetch = WhatToFetch.ALREADY_MERGED
 
     @Suppress("KotlinConstantConditions")
     if (specificPreviousVersion != null) {
         whatToFetch = WhatToFetch.ALREADY_MERGED
+        version = specificPreviousVersion
     }
 
     SkyHanniChangelogBuilder.generateChangelog(whatToFetch, version, specificPreviousVersion)
