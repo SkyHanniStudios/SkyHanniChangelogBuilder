@@ -52,7 +52,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog UnknownCategory",
             "+ Added new feature. - John Doe"
         )
-        val prLink = "https://example.com/pr/2"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -67,7 +67,7 @@ class SkyHanniChangelogBuilderTest {
             "+ Added new feature. - your_name_here",
             "    * Extra info."
         )
-        val prLink = "https://example.com/pr/3"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -82,7 +82,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog New Features",
             "+ - Added new feature. - John Doe"
         )
-        val prLink = "https://example.com/pr/4"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -96,7 +96,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog New Features",
             "+ Add new feature - John Doe",
         )
-        val prLink = "https://example.com/pr/5"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -111,7 +111,7 @@ class SkyHanniChangelogBuilderTest {
             "## Changelog New Features",
             "+ Added new feature",
         )
-        val prLink = "https://example.com/pr/6"
+        val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
@@ -120,9 +120,41 @@ class SkyHanniChangelogBuilderTest {
         assertEquals("Change should end with a full stop", errors[1].message)
     }
 
+
+    @Test
+    fun `test body should not have unknown lines after changes are declared`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "+ Added new feature. - John Doe",
+            "This line should error"
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+        assertEquals(1, errors.size, "Expected one error")
+        assertEquals("Unknown line after changes started being declared", errors[0].message)
+    }
+
+    @Test
+    fun `test body with additional spaces`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "+ Added new feature.   -     John Doe",
+            "    * More info.    ",
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+
+        println("changes: ${changes.map { it.text }}")
+        println("errors: ${errors.map { it.message }}")
+
+        assertTrue(errors.isEmpty(), "Expected no errors")
+    }
+
     @Test
     fun `test title with correct pull request title`() {
-        val prTitle = "Feature: New feature"
+        val prTitle = "Feature + Fix: New feature"
         val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(largeValidInput, prLink)
@@ -142,7 +174,8 @@ class SkyHanniChangelogBuilderTest {
         val pullRequestTitleErrors = SkyHanniChangelogBuilder.findPullRequestNameErrors(prTitle, changes)
 
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
-        assertEquals("Unknown category: 'Bugfix', valid categories are: ${PullRequestCategory.validCategories()}", pullRequestTitleErrors[0].message)
+        assertEquals("Unknown category: 'Bugfix', valid categories are: ${PullRequestCategory.validCategories()} " +
+                "and expected categories based on your changes are: Feature, Fix", pullRequestTitleErrors[0].message)
     }
 
     @Test
@@ -169,5 +202,18 @@ class SkyHanniChangelogBuilderTest {
 
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
         assertEquals("PR has category 'Backend' which is not in the changelog. Expected categories: Feature, Fix", pullRequestTitleErrors[0].message)
+    }
+
+    @Test
+    fun `test title with another wrong format`() {
+        val prTitle = "Feature/Fix: Fix up the backend"
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(largeValidInput, prLink)
+
+        val pullRequestTitleErrors = SkyHanniChangelogBuilder.findPullRequestNameErrors(prTitle, changes)
+
+        assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
+        assertEquals("PR categories shouldn't be separated by '/' or '&', use ' + ' instead", pullRequestTitleErrors[0].message)
     }
 }

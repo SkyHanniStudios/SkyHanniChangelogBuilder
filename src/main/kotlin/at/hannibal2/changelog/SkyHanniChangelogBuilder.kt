@@ -13,7 +13,7 @@ object SkyHanniChangelogBuilder {
     private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
-    private val changePattern = "\\+ (?<text>.+) - (?<author>.+)".toPattern()
+    private val changePattern = "\\+ (?<text>.+?) - (?<author>.+)".toPattern()
     private val changePatternNoAuthor = "\\+ (?<text>.+)".toPattern()
     private val extraInfoPattern = " {4}\\* (?<text>.+)".toPattern()
     private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
@@ -87,7 +87,7 @@ object SkyHanniChangelogBuilder {
 
         for (pullRequest in sortedPrs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
-            if (prBody.any { it == "exclude_from_changelog" }) {
+            if (prBody.any { it == "exclude_from_changelog" || it == "ignore_from_changelog" }) {
                 excludedPrs.add(pullRequest.prInfo())
                 continue
             }
@@ -104,7 +104,7 @@ object SkyHanniChangelogBuilder {
 
             if (changeErrors.isNotEmpty()) {
                 println("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { println("  - ${it.message}${it.formatLine()}") }
+                changeErrors.forEach { println("  - ${it.formatLine()}") }
                 println()
                 wrongPrDescription++
                 continue
@@ -117,7 +117,7 @@ object SkyHanniChangelogBuilder {
         println()
         excludedPrs.forEach { println("Excluded PR: $it") }
 
-        TextOutputType.entries.forEach { type ->
+        for (type in TextOutputType.entries) {
             printChangelog(allChanges, version, type)
         }
 
@@ -158,8 +158,8 @@ object SkyHanniChangelogBuilder {
             val category = currentCategory ?: continue
 
             changePattern.matchMatcher(line) {
-                val text = group("text")
-                val author = group("author")
+                val text = group("text").trim()
+                val author = group("author").trim()
 
                 if (author == "your_name_here") {
                     errors.add(ChangelogError("Author is not set", line))
@@ -174,7 +174,7 @@ object SkyHanniChangelogBuilder {
                 continue@loop
             }
             changePatternNoAuthor.matchMatcher(line) {
-                val text = group("text")
+                val text = group("text").trim()
                 errors.add(ChangelogError("Author is not set", line))
 
                 illegalStartPattern.matchMatcher(text) {
@@ -190,7 +190,7 @@ object SkyHanniChangelogBuilder {
                     errors.add(ChangelogError("Extra info without a change", line))
                 }
                 val change = currentChange ?: continue@loop
-                val text = group("text")
+                val text = group("text").trim()
                 if (text == "Extra info.") {
                     errors.add(ChangelogError("Extra info is not filled out", line))
                 }
@@ -203,6 +203,8 @@ object SkyHanniChangelogBuilder {
                 change.extraInfo.add(text)
                 continue@loop
             }
+
+            errors.add(ChangelogError("Unknown line after changes started being declared", line))
         }
 
         if (changes.isEmpty() && errors.isEmpty()) {
@@ -252,19 +254,26 @@ object SkyHanniChangelogBuilder {
         }
 
         prTitlePattern.matchMatcher(prTitle) {
-            val prPrefixes = group("prefix").split(" + ")
+            val prefixText = group("prefix")
+
+            if (prefixText.contains("/") || prefixText.contains("&")) {
+                errors.add(PullRequestNameError("PR categories shouldn't be separated by '/' or '&', use ' + ' instead"))
+            }
+
+            val prPrefixes = prefixText.split(Regex("[+&/]")).map { it.trim() }
             val expectedCategories = changes.map { it.category }.toSet()
+            val expectedOptions = expectedCategories.joinToString { it.prPrefix }
 
             val foundCategories = prPrefixes.mapNotNull { prefix ->
                 PullRequestCategory.fromPrPrefix(prefix) ?: run {
-                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()}"))
+                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
+                            "and expected categories based on your changes are: $expectedOptions"))
                     null
                 }
             }
 
             foundCategories.forEach { category ->
                 if (category !in expectedCategories) {
-                    val expectedOptions = expectedCategories.joinToString { it.prPrefix }
                     errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
                 }
             }
@@ -375,14 +384,29 @@ class CodeChange(val text: String, val category: PullRequestCategory, val prLink
 }
 
 class ChangelogError(val message: String, private val relevantLine: String) {
-    fun formatLine() = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
+    fun formatLine(): String {
+        val lineText = if (relevantLine.isBlank()) "" else " in text: `$relevantLine`"
+        return "$message$lineText"
+    }
 }
 
 class PullRequestNameError(val message: String)
 
-class UpdateVersion(fullVersion: String, betaVersion: String) {
-    val asTitle = "Version $fullVersion Beta $betaVersion"
-    val asTag = "$fullVersion.Beta.$betaVersion"
+// Not having a full version can be used for creating the changelog between the final beta and the full version
+class UpdateVersion(fullVersion: String, betaVersion: String?) {
+    val asTitle = "Version $fullVersion${betaVersion?.let { " Beta $it" } ?: ""}"
+    val asTag = "$fullVersion${betaVersion?.let { ".Beta.$it" } ?: ""}"
+
+    constructor(versionString: String) : this(extractVersion(versionString).first, extractVersion(versionString).second)
+
+    companion object {
+        private fun extractVersion(versionString: String): Pair<String, String?> {
+            val split = versionString.split(",").map { it.trim() }
+            val fullVersion = if (split[0].startsWith("0.")) split[0] else "0.${split[0]}"
+            val betaVersion = split.getOrNull(1)
+            return fullVersion to betaVersion
+        }
+    }
 }
 
 fun main() {
