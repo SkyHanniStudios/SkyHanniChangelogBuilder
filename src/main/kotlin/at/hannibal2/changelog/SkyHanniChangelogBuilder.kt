@@ -2,7 +2,7 @@ package at.hannibal2.changelog
 
 import at.hannibal2.changelog.Utils.matchMatcher
 import com.google.gson.GsonBuilder
-import java.util.Date
+import java.util.*
 
 object SkyHanniChangelogBuilder {
 
@@ -24,28 +24,51 @@ object SkyHanniChangelogBuilder {
         return gson.fromJson(jsonString, Array<PullRequest>::class.java).toList()
     }
 
-    private fun getDateOfMostRecentTag(): Date {
+    private fun getDateOfMostRecentTag(specificPreviousVersion: UpdateVersion?): Pair<Date, Date> {
         val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
         val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
-        val mostRecentTag = tags.first()
 
-        val tagCommitUrl = mostRecentTag.commit.url
+        val (targetTag, previousTag) = if (specificPreviousVersion != null) {
+            val tag = tags.firstOrNull { it.name == specificPreviousVersion.asTag }
+            if (tag == null) {
+                throw IllegalArgumentException(
+                    "Tag $specificPreviousVersion not found. " +
+                            "Possible tags: ${tags.joinToString { it.name }}"
+                )
+            }
+            val index = tags.indexOf(tag)
+            tag to tags.getOrNull(index + 1)
+        } else {
+            tags.first() to null
+        }
+
+        val tagCommitUrl = targetTag.commit.url
 
         val commitJsonString = Utils.getTextFromUrl(tagCommitUrl).joinToString("\n")
         val commit = gson.fromJson(commitJsonString, Commit::class.java)
 
-        return commit.commit.author.date
+        return if (previousTag != null) {
+            val nextTagCommitUrl = previousTag.commit.url
+            val nextTagCommitJsonString = Utils.getTextFromUrl(nextTagCommitUrl).joinToString("\n")
+            val nextTagCommit = gson.fromJson(nextTagCommitJsonString, Commit::class.java)
+            commit.commit.author.date to nextTagCommit.commit.author.date
+        } else {
+            Date() to commit.commit.author.date
+        }
     }
 
-    private fun filterOnlyRelevantPrs(prs: List<PullRequest>): List<PullRequest> {
-        val dateOfMostRecentTag = getDateOfMostRecentTag()
-        return prs.filter { it.mergedAt != null && it.mergedAt > dateOfMostRecentTag }
+    private fun filterOnlyRelevantPrs(
+        prs: List<PullRequest>,
+        specificPreviousVersion: UpdateVersion?
+    ): List<PullRequest> {
+        val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
+        return prs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
     }
 
-    fun generateChangelog(whatToFetch: WhatToFetch, version: UpdateVersion) {
+    fun generateChangelog(whatToFetch: WhatToFetch, version: UpdateVersion, specificPreviousVersion: UpdateVersion?) {
         val foundPrs = fetchPullRequests(whatToFetch)
         val relevantPrs = if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
-            filterOnlyRelevantPrs(foundPrs)
+            filterOnlyRelevantPrs(foundPrs, specificPreviousVersion)
         } else {
             foundPrs.filter { !it.draft }
         }
@@ -363,8 +386,30 @@ class UpdateVersion(fullVersion: String, betaVersion: String) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.28", "21")
-    SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
+    val version = UpdateVersion("0.28", "19")
+
+    /**
+     * If you want to generate a changelog for a specific previous version,
+     * set this to the version you want to generate the changelog for.
+     *
+     * Leave this as null to use the above version.
+     * Currently, this only works for recent versions, as the GitHub API only fetches the most recent 100 PRs unless
+     * I make the code dig through all the pages.
+     *
+     * Will be in the format of full version, beta version
+     */
+    // todo allow this to work with full versions
+    val specificPreviousVersion: UpdateVersion? = null
+//    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "19")
+
+    var whatToFetch = WhatToFetch.ALREADY_MERGED
+
+    @Suppress("KotlinConstantConditions")
+    if (specificPreviousVersion != null) {
+        whatToFetch = WhatToFetch.ALREADY_MERGED
+    }
+
+    SkyHanniChangelogBuilder.generateChangelog(whatToFetch, version, specificPreviousVersion)
 }
 
 // smart AI prompt for formatting
