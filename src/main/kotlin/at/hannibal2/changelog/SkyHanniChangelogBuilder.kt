@@ -33,7 +33,7 @@ object SkyHanniChangelogBuilder {
             val tag = tags.firstOrNull { it.name == specificPreviousVersion.asTag }
             if (tag == null) {
                 throw IllegalArgumentException(
-                    "Tag $specificPreviousVersion not found. " +
+                    "Tag ${specificPreviousVersion.asTag} not found. " +
                             "Possible tags: ${tags.joinToString { it.name }}"
                 )
             }
