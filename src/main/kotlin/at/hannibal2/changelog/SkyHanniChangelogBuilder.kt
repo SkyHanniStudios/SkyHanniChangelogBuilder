@@ -301,7 +301,7 @@ object SkyHanniChangelogBuilder {
         for (category in PullRequestCategory.entries) {
             if (type == TextOutputType.DISCORD_PUBLIC && category == PullRequestCategory.INTERNAL) continue
 
-            val relevantChanges = changes.filter { it.category == category }
+            val relevantChanges = changes.filter { it.category == category }.sortedBy { it.text }
             if (relevantChanges.isEmpty()) continue
             list.add("### " + category.changelogName)
             if (type == TextOutputType.DISCORD_PUBLIC) {
@@ -399,8 +399,8 @@ fun main() {
      * Will be in the format of full version, beta version
      */
     // todo allow this to work with full versions
-    val specificPreviousVersion: UpdateVersion? = null
-//    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "19")
+//    val specificPreviousVersion: UpdateVersion? = null
+    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "19")
 
     var whatToFetch = WhatToFetch.ALREADY_MERGED
 
