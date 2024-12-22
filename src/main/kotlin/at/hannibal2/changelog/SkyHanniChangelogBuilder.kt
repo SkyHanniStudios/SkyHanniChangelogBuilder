@@ -1,8 +1,9 @@
 package at.hannibal2.changelog
 
 import at.hannibal2.changelog.Utils.matchMatcher
+import at.hannibal2.changelog.Utils.offsetMinute
 import com.google.gson.GsonBuilder
-import java.util.Date
+import java.util.*
 
 object SkyHanniChangelogBuilder {
 
@@ -24,28 +25,51 @@ object SkyHanniChangelogBuilder {
         return gson.fromJson(jsonString, Array<PullRequest>::class.java).toList()
     }
 
-    private fun getDateOfMostRecentTag(): Date {
+    private fun getDateOfMostRecentTag(specificPreviousVersion: UpdateVersion?): Pair<Date, Date> {
         val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
         val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
-        val mostRecentTag = tags.first()
 
-        val tagCommitUrl = mostRecentTag.commit.url
+        val (targetTag, previousTag) = if (specificPreviousVersion != null) {
+            val tag = tags.firstOrNull { it.name == specificPreviousVersion.asTag }
+            if (tag == null) {
+                throw IllegalArgumentException(
+                    "Tag ${specificPreviousVersion.asTag} not found. " +
+                            "Possible tags: ${tags.joinToString { it.name }}"
+                )
+            }
+            val index = tags.indexOf(tag)
+            tag to tags.getOrNull(index + 1)
+        } else {
+            tags.first() to null
+        }
+
+        val tagCommitUrl = targetTag.commit.url
 
         val commitJsonString = Utils.getTextFromUrl(tagCommitUrl).joinToString("\n")
         val commit = gson.fromJson(commitJsonString, Commit::class.java)
 
-        return commit.commit.author.date
+        return if (previousTag != null) {
+            val nextTagCommitUrl = previousTag.commit.url
+            val nextTagCommitJsonString = Utils.getTextFromUrl(nextTagCommitUrl).joinToString("\n")
+            val nextTagCommit = gson.fromJson(nextTagCommitJsonString, Commit::class.java)
+            commit.commit.author.date.offsetMinute() to nextTagCommit.commit.author.date.offsetMinute()
+        } else {
+            Date().offsetMinute() to commit.commit.author.date.offsetMinute()
+        }
     }
 
-    private fun filterOnlyRelevantPrs(prs: List<PullRequest>): List<PullRequest> {
-        val dateOfMostRecentTag = getDateOfMostRecentTag()
-        return prs.filter { it.mergedAt != null && it.mergedAt > dateOfMostRecentTag }
+    private fun filterOnlyRelevantPrs(
+        prs: List<PullRequest>,
+        specificPreviousVersion: UpdateVersion?
+    ): List<PullRequest> {
+        val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
+        return prs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
     }
 
-    fun generateChangelog(whatToFetch: WhatToFetch, version: UpdateVersion) {
+    fun generateChangelog(whatToFetch: WhatToFetch, version: UpdateVersion, specificPreviousVersion: UpdateVersion?) {
         val foundPrs = fetchPullRequests(whatToFetch)
         val relevantPrs = if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
-            filterOnlyRelevantPrs(foundPrs)
+            filterOnlyRelevantPrs(foundPrs, specificPreviousVersion)
         } else {
             foundPrs.filter { !it.draft }
         }
@@ -106,7 +130,6 @@ object SkyHanniChangelogBuilder {
         println("Total changes found: ${allChanges.size}")
     }
 
-    // todo implement tests for this
     fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
         val changes = mutableListOf<CodeChange>()
         val errors = mutableListOf<ChangelogError>()
@@ -288,7 +311,7 @@ object SkyHanniChangelogBuilder {
         for (category in PullRequestCategory.entries) {
             if (type == TextOutputType.DISCORD_PUBLIC && category == PullRequestCategory.INTERNAL) continue
 
-            val relevantChanges = changes.filter { it.category == category }
+            val relevantChanges = changes.filter { it.category == category }.sortedBy { it.text.lowercase() }
             if (relevantChanges.isEmpty()) continue
             list.add("### " + category.changelogName)
             if (type == TextOutputType.DISCORD_PUBLIC) {
@@ -296,7 +319,7 @@ object SkyHanniChangelogBuilder {
             }
             for (change in relevantChanges) {
                 val changePrefix = getPrefix(category, type)
-                list.add("$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}")
+                list.add("$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim())
                 for (extraInfo in change.extraInfo) {
                     list.add("${type.extraInfoPrefix} $extraInfo")
                 }
@@ -309,7 +332,7 @@ object SkyHanniChangelogBuilder {
         if (type == TextOutputType.DISCORD_PUBLIC) {
             val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
             list.add("For more details, see the [full changelog](<$releaseLink>)")
-            val downloadLink = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}.jar"
+            val downloadLink = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-mc1.8.9-${version.asTag}.jar"
             list.add("Download link: $downloadLink")
         }
 
@@ -346,8 +369,8 @@ enum class PullRequestCategory(val changelogName: String, val prPrefix: String) 
 }
 
 enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
-    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=150", { it.mergedAt ?: Date(0) }),
-    OPEN_PRS("state=open&sort=updated&direction=desc&per_page=150", { it.updatedAt }),
+    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=100", { it.mergedAt ?: Date(0) }),
+    OPEN_PRS("state=open&sort=updated&direction=desc&per_page=100", { it.updatedAt }),
 }
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
@@ -388,10 +411,32 @@ class UpdateVersion(fullVersion: String, betaVersion: String?) {
 
 fun main() {
     // todo maybe change the way version is handled
-    val version = UpdateVersion("0.28", "11")
-    SkyHanniChangelogBuilder.generateChangelog(WhatToFetch.ALREADY_MERGED, version)
+    var version = UpdateVersion("0.28", "17")
+
+    /**
+     * If you want to generate a changelog for a specific previous version,
+     * set this to the version you want to generate the changelog for.
+     *
+     * Leave this as null to use the above version.
+     * Currently, this only works for recent versions, as the GitHub API only fetches the most recent 100 PRs unless
+     * I make the code dig through all the pages.
+     *
+     * Will be in the format of full version, beta version
+     */
+    // todo allow this to work with full versions
+//    val specificPreviousVersion: UpdateVersion? = null
+    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "21")
+
+    var whatToFetch = WhatToFetch.ALREADY_MERGED
+
+    @Suppress("KotlinConstantConditions")
+    if (specificPreviousVersion != null) {
+        whatToFetch = WhatToFetch.ALREADY_MERGED
+        version = specificPreviousVersion
+    }
+
+    SkyHanniChangelogBuilder.generateChangelog(whatToFetch, version, specificPreviousVersion)
 }
 
 // smart AI prompt for formatting
 // keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
-
