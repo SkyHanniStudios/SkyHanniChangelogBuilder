@@ -153,6 +153,22 @@ class SkyHanniChangelogBuilderTest {
     }
 
     @Test
+    fun `test body with empty line after category`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "",
+            "- Added new feature. - John Doe",
+            "    * More info.",
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+
+        assertTrue(errors.size == 1, "Expected no errors")
+        assertEquals("Unexpected empty line after category declared", errors[0].message)
+    }
+
+    @Test
     fun `test title with correct pull request title`() {
         val prTitle = "Feature + Fix: New feature"
         val prLink = "https://example.com/pr/1"

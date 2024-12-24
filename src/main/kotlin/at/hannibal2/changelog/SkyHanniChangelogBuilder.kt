@@ -139,6 +139,12 @@ object SkyHanniChangelogBuilder {
 
         loop@ for (line in prBody) {
             if (line.isBlank()) {
+
+                if (currentCategory != null && currentChange == null) {
+                    println("erroring on line")
+                    errors.add(ChangelogError("Unexpected empty line after category declared", line))
+                }
+
                 currentCategory = null
                 currentChange = null
                 continue
@@ -151,6 +157,7 @@ object SkyHanniChangelogBuilder {
                 if (currentCategory == null) {
                     errors.add(ChangelogError("Unknown category: $categoryName", line))
                 }
+                currentChange = null
 
                 continue@loop
             }
@@ -266,8 +273,12 @@ object SkyHanniChangelogBuilder {
 
             val foundCategories = prPrefixes.mapNotNull { prefix ->
                 PullRequestCategory.fromPrPrefix(prefix) ?: run {
-                    errors.add(PullRequestNameError("Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
-                            "and expected categories based on your changes are: $expectedOptions"))
+                    errors.add(
+                        PullRequestNameError(
+                            "Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
+                                    "and expected categories based on your changes are: $expectedOptions"
+                        )
+                    )
                     null
                 }
             }
