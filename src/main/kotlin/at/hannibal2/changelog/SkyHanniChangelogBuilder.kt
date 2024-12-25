@@ -386,7 +386,7 @@ enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
     DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
-    GITHUB("  + ", { "(${it.prLink})" }),
+    GITHUB("   +", { "(${it.prLink})" }),
     DISCORD_PUBLIC(" - ", { "" }),
 }
 
@@ -435,8 +435,8 @@ fun main() {
      * Will be in the format of full version, beta version
      */
     // todo allow this to work with full versions
-//    val specificPreviousVersion: UpdateVersion? = null
-    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "21")
+    val specificPreviousVersion: UpdateVersion? = null
+//    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "21")
 
     var whatToFetch = WhatToFetch.ALREADY_MERGED
 
