@@ -422,7 +422,7 @@ class UpdateVersion(fullVersion: String, betaVersion: String?) {
 
 fun main() {
     // todo maybe change the way version is handled
-    var version = UpdateVersion("0.28", "17")
+    var version = UpdateVersion("0.28", "22")
 
     /**
      * If you want to generate a changelog for a specific previous version,
@@ -435,8 +435,8 @@ fun main() {
      * Will be in the format of full version, beta version
      */
     // todo allow this to work with full versions
-//    val specificPreviousVersion: UpdateVersion? = null
-    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "21")
+    val specificPreviousVersion: UpdateVersion? = null
+//    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "22")
 
     var whatToFetch = WhatToFetch.ALREADY_MERGED
 
