@@ -122,12 +122,12 @@ object SkyHanniChangelogBuilder {
         }
 
         println()
-        println("${sortedPrs.count()} valid PRs found")
-        println("Excluded PRs: ${excludedPrs.size}")
-        println("PRs with wrong names: $wrongPrNames")
-        println("PRs with wrong descriptions: $wrongPrDescription")
-        println("Done PRs: $donePrs")
-        println("Total changes found: ${allChanges.size}")
+        println("Loaded ${sortedPrs.size} PRs to be processed for changelog")
+        println("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
+        if (wrongPrNames > 0) println("$wrongPrNames PRs had a wrong name")
+        if (wrongPrDescription > 0) println("$wrongPrDescription PRs had a wrong description")
+        println("Processed $donePrs PRs for changelog")
+        println("Total changes found in these PRs: ${allChanges.size}")
     }
 
     fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
