@@ -17,7 +17,10 @@ class SkyHanniChangelogBuilderTest {
         "+ Fixed a bug. - John Doe",
         "    * Additional info.",
         "+ Fixed another bug. - Jane Doe",
-        "    * More info."
+        "    * More info.",
+        "",
+        "## Changelog Technical Details",
+        "+ Made some technical changes. - John Doe",
     )
 
     @Test
@@ -27,7 +30,7 @@ class SkyHanniChangelogBuilderTest {
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(largeValidInput, prLink)
 
         assertTrue(errors.isEmpty(), "Expected no errors")
-        assertEquals(4, changes.size, "Expected four changes")
+        assertEquals(5, changes.size, "Expected five changes")
         assertEquals("Added new feature.", changes[0].text)
         assertEquals(PullRequestCategory.FEATURE, changes[0].category)
         assertEquals("John Doe", changes[0].author)
@@ -44,6 +47,9 @@ class SkyHanniChangelogBuilderTest {
         assertEquals(PullRequestCategory.FIX, changes[3].category)
         assertEquals("Jane Doe", changes[3].author)
         assertEquals("More info.", changes[3].extraInfo[0])
+        assertEquals(PullRequestCategory.INTERNAL, changes[4].category)
+        assertEquals("Made some technical changes.", changes[4].text)
+
     }
 
     @Test
@@ -191,7 +197,7 @@ class SkyHanniChangelogBuilderTest {
 
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
         assertEquals("Unknown category: 'Bugfix', valid categories are: ${PullRequestCategory.validCategories()} " +
-                "and expected categories based on your changes are: Feature, Fix", pullRequestTitleErrors[0].message)
+                "and expected categories based on your changes are: Feature, Fix, Backend", pullRequestTitleErrors[0].message)
     }
 
     @Test
@@ -209,7 +215,7 @@ class SkyHanniChangelogBuilderTest {
 
     @Test
     fun `test title with wrong category`() {
-        val prTitle = "Backend: Fix up the backend"
+        val prTitle = "Remove: Remove a feature"
         val prLink = "https://example.com/pr/1"
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(largeValidInput, prLink)
@@ -217,7 +223,7 @@ class SkyHanniChangelogBuilderTest {
         val pullRequestTitleErrors = SkyHanniChangelogBuilder.findPullRequestNameErrors(prTitle, changes)
 
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
-        assertEquals("PR has category 'Backend' which is not in the changelog. Expected categories: Feature, Fix", pullRequestTitleErrors[0].message)
+        assertEquals("PR has category 'Remove' which is not in the changelog. Expected categories: Feature, Fix, Backend", pullRequestTitleErrors[0].message)
     }
 
     @Test
@@ -231,5 +237,18 @@ class SkyHanniChangelogBuilderTest {
 
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
         assertEquals("PR categories shouldn't be separated by '/' or '&', use ' + ' instead", pullRequestTitleErrors[0].message)
+    }
+
+    @Test
+    fun `test title with multiple categories must priorities fix category`() {
+        val prTitle = "Feature + Backend: Fix up the backend"
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(largeValidInput, prLink)
+
+        val pullRequestTitleErrors = SkyHanniChangelogBuilder.findPullRequestNameErrors(prTitle, changes)
+
+        assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
+        assertEquals("PR title must include category 'Fix' if there are any fixes in the PR", pullRequestTitleErrors[0].message)
     }
 }

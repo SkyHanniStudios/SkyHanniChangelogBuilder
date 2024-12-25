@@ -288,6 +288,13 @@ object SkyHanniChangelogBuilder {
                     errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
                 }
             }
+
+            val fix = PullRequestCategory.FIX
+
+            if (errors.isEmpty() && fix in expectedCategories && fix !in foundCategories) {
+                errors.add(PullRequestNameError("PR title must include category 'Fix' if there are any fixes in the PR"))
+            }
+
             return errors
         }
 
