@@ -318,6 +318,7 @@ object SkyHanniChangelogBuilder {
         println(BORDER)
     }
 
+    // todo add unit tests for this output
     private fun generateChangelogText(
         changes: List<CodeChange>,
         version: UpdateVersion,
