@@ -40,7 +40,8 @@ object SkyHanniChangelogBuilder {
             val index = tags.indexOf(tag)
             tag to tags.getOrNull(index + 1)
         } else {
-            tags.first() to null
+            // todo change this back to first once there are some merged prs
+            tags[1] to null
         }
 
         val tagCommitUrl = targetTag.commit.url
@@ -58,34 +59,36 @@ object SkyHanniChangelogBuilder {
         }
     }
 
-    private fun filterOnlyRelevantPrs(
-        prs: List<PullRequest>,
-        specificPreviousVersion: ModVersion?
-    ): List<PullRequest> {
-        val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
-        return prs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
-    }
-
-    fun generateChangelog(whatToFetch: WhatToFetch, version: ModVersion, specificPreviousVersion: ModVersion?) {
+    private fun getRelevantPrs(whatToFetch: WhatToFetch, specificPreviousVersion: ModVersion?): List<PullRequest> {
         val foundPrs = fetchPullRequests(whatToFetch)
-        val relevantPrs = if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
-            filterOnlyRelevantPrs(foundPrs, specificPreviousVersion)
+
+        return if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
+            val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
+            foundPrs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
         } else {
             foundPrs.filter { !it.draft }
         }
+    }
 
-        val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
+    private data class ChangesResult(
+        val changes: List<CodeChange>,
+        val previousText: List<String>,
+        val summaryText: List<String>
+    )
+
+    private fun getAllChanges(prs: List<PullRequest>): ChangesResult {
+        val previousText = mutableListOf<String>()
+        val summaryText = mutableListOf<String>()
 
         val allChanges = mutableListOf<CodeChange>()
-
         var wrongPrNames = 0
         var wrongPrDescription = 0
         var donePrs = 0
         val excludedPrs = mutableListOf<String>()
 
-        println()
+        previousText.add("")
 
-        for (pullRequest in sortedPrs) {
+        for (pullRequest in prs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
             if (prBody.any { it == "exclude_from_changelog" || it == "ignore_from_changelog" }) {
                 excludedPrs.add(pullRequest.prInfo())
@@ -96,16 +99,16 @@ object SkyHanniChangelogBuilder {
             val titleErrors = findPullRequestNameErrors(pullRequest.title, changes)
 
             if (titleErrors.isNotEmpty()) {
-                println("PR has incorrect name: ${pullRequest.prInfo()}")
-                titleErrors.forEach { println("  - ${it.message}") }
-                println()
+                previousText.add("PR has incorrect name: ${pullRequest.prInfo()}")
+                titleErrors.forEach { previousText.add("  - ${it.message}") }
+                previousText.add("")
                 wrongPrNames++
             }
 
             if (changeErrors.isNotEmpty()) {
-                println("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { println("  - ${it.formatLine()}") }
-                println()
+                previousText.add("PR has errors: ${pullRequest.prInfo()}")
+                changeErrors.forEach { previousText.add("  - ${it.formatLine()}") }
+                previousText.add("")
                 wrongPrDescription++
                 continue
             }
@@ -114,20 +117,37 @@ object SkyHanniChangelogBuilder {
             donePrs++
         }
 
-        println()
-        excludedPrs.forEach { println("Excluded PR: $it") }
+        previousText.add("")
+
+        excludedPrs.forEach { previousText.add("Excluded PR: $it") }
+
+        summaryText.add("")
+        summaryText.add("Loaded ${prs.size} PRs to be processed for changelog")
+        summaryText.add("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
+        if (wrongPrNames > 0) summaryText.add("$wrongPrNames PRs had a wrong name")
+        if (wrongPrDescription > 0) summaryText.add("$wrongPrDescription PRs had a wrong description")
+        summaryText.add("Processed $donePrs PRs for changelog")
+        summaryText.add("Total changes found in these PRs: ${allChanges.size}")
+
+        return ChangesResult(allChanges, previousText, summaryText)
+    }
+
+    fun generateChangelog(whatToFetch: WhatToFetch, version: ModVersion, specificPreviousVersion: ModVersion?) {
+        val relevantPrs = getRelevantPrs(whatToFetch, specificPreviousVersion)
+        val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
+
+        val changesResult = getAllChanges(sortedPrs)
+        val allChanges = changesResult.changes
+        val previousText = changesResult.previousText
+        val summaryText = changesResult.summaryText
+
+        previousText.forEach { println(it) }
 
         for (type in TextOutputType.entries) {
-            printChangelog(allChanges, version, type)
+            getSpecificChangelog(allChanges, version, type)
         }
 
-        println()
-        println("Loaded ${sortedPrs.size} PRs to be processed for changelog")
-        println("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
-        if (wrongPrNames > 0) println("$wrongPrNames PRs had a wrong name")
-        if (wrongPrDescription > 0) println("$wrongPrDescription PRs had a wrong description")
-        println("Processed $donePrs PRs for changelog")
-        println("Total changes found in these PRs: ${allChanges.size}")
+        summaryText.forEach { println(it) }
     }
 
     fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
@@ -302,8 +322,26 @@ object SkyHanniChangelogBuilder {
         return errors
     }
 
+    /**
+     * To be used by gradle tasks to generate specific output types.
+     */
+    fun generateSpecificOutputType(modVersion: String, outputType: String, alreadyReleased: Boolean): String {
+        val version = ModVersion.fromString(modVersion)
+        val type =
+            TextOutputType.getFromName(outputType) ?: throw IllegalArgumentException("Unknown output type: $outputType")
+
+        val previousVersion = if (alreadyReleased) version else null
+
+        val whatToFetch = WhatToFetch.ALREADY_MERGED
+        val relevantPrs = getRelevantPrs(whatToFetch, previousVersion)
+        val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
+
+        val changes = getAllChanges(sortedPrs).changes
+        return generateChangelogText(changes, version, type).joinToString("\n")
+    }
+
     // todo add indicators of where to copy paste if over 2000 characters
-    private fun printChangelog(changes: List<CodeChange>, version: ModVersion, type: TextOutputType) {
+    private fun getSpecificChangelog(changes: List<CodeChange>, version: ModVersion, type: TextOutputType) {
         val text = generateChangelogText(changes, version, type)
 
         println("")
@@ -396,6 +434,11 @@ enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeCha
     DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
     GITHUB("   +", { "(${it.prLink})" }),
     DISCORD_PUBLIC(" - ", { "" }),
+    ;
+
+    companion object {
+        fun getFromName(name: String) = entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
+    }
 }
 
 class CodeChange(val text: String, val category: PullRequestCategory, val prLink: String, val author: String) {
@@ -412,7 +455,6 @@ class ChangelogError(val message: String, private val relevantLine: String) {
 class PullRequestNameError(val message: String)
 
 fun main() {
-    // todo maybe change the way version is handled
     var version = ModVersion(1, 0, 0)
 
     /**
@@ -428,7 +470,7 @@ fun main() {
     val specificPreviousVersion: ModVersion? = null
 //    val specificPreviousVersion: ModVersion? = ModVersion(1, 0, 0)
 
-    var whatToFetch = WhatToFetch.OPEN_PRS
+    var whatToFetch = WhatToFetch.ALREADY_MERGED
 
     @Suppress("KotlinConstantConditions")
     if (specificPreviousVersion != null) {
