@@ -25,7 +25,7 @@ object SkyHanniChangelogBuilder {
         return gson.fromJson(jsonString, Array<PullRequest>::class.java).toList()
     }
 
-    private fun getDateOfMostRecentTag(specificPreviousVersion: UpdateVersion?): Pair<Date, Date> {
+    private fun getDateOfMostRecentTag(specificPreviousVersion: ModVersion?): Pair<Date, Date> {
         val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
         val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
 
@@ -60,13 +60,13 @@ object SkyHanniChangelogBuilder {
 
     private fun filterOnlyRelevantPrs(
         prs: List<PullRequest>,
-        specificPreviousVersion: UpdateVersion?
+        specificPreviousVersion: ModVersion?
     ): List<PullRequest> {
         val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
         return prs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
     }
 
-    fun generateChangelog(whatToFetch: WhatToFetch, version: UpdateVersion, specificPreviousVersion: UpdateVersion?) {
+    fun generateChangelog(whatToFetch: WhatToFetch, version: ModVersion, specificPreviousVersion: ModVersion?) {
         val foundPrs = fetchPullRequests(whatToFetch)
         val relevantPrs = if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
             filterOnlyRelevantPrs(foundPrs, specificPreviousVersion)
@@ -303,7 +303,7 @@ object SkyHanniChangelogBuilder {
     }
 
     // todo add indicators of where to copy paste if over 2000 characters
-    private fun printChangelog(changes: List<CodeChange>, version: UpdateVersion, type: TextOutputType) {
+    private fun printChangelog(changes: List<CodeChange>, version: ModVersion, type: TextOutputType) {
         val text = generateChangelogText(changes, version, type)
 
         println("")
@@ -321,7 +321,7 @@ object SkyHanniChangelogBuilder {
     // todo add unit tests for this output
     private fun generateChangelogText(
         changes: List<CodeChange>,
-        version: UpdateVersion,
+        version: ModVersion,
         type: TextOutputType
     ): List<String> {
         val list = mutableListOf<String>()
@@ -411,26 +411,9 @@ class ChangelogError(val message: String, private val relevantLine: String) {
 
 class PullRequestNameError(val message: String)
 
-// Not having a full version can be used for creating the changelog between the final beta and the full version
-class UpdateVersion(fullVersion: String, betaVersion: String?) {
-    val asTitle = "Version $fullVersion${betaVersion?.let { " Beta $it" } ?: ""}"
-    val asTag = "$fullVersion${betaVersion?.let { ".Beta.$it" } ?: ""}"
-
-    constructor(versionString: String) : this(extractVersion(versionString).first, extractVersion(versionString).second)
-
-    companion object {
-        private fun extractVersion(versionString: String): Pair<String, String?> {
-            val split = versionString.split(",").map { it.trim() }
-            val fullVersion = if (split[0].startsWith("0.")) split[0] else "0.${split[0]}"
-            val betaVersion = split.getOrNull(1)
-            return fullVersion to betaVersion
-        }
-    }
-}
-
 fun main() {
     // todo maybe change the way version is handled
-    var version = UpdateVersion("0.28", "22")
+    var version = ModVersion(1, 0, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
@@ -440,13 +423,12 @@ fun main() {
      * Currently, this only works for recent versions, as the GitHub API only fetches the most recent 100 PRs unless
      * I make the code dig through all the pages.
      *
-     * Will be in the format of full version, beta version
+     * Does not work with legacy versions (0.x)
      */
-    // todo allow this to work with full versions
-    val specificPreviousVersion: UpdateVersion? = null
-//    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "22")
+    val specificPreviousVersion: ModVersion? = null
+//    val specificPreviousVersion: ModVersion? = ModVersion(1, 0, 0)
 
-    var whatToFetch = WhatToFetch.ALREADY_MERGED
+    var whatToFetch = WhatToFetch.OPEN_PRS
 
     @Suppress("KotlinConstantConditions")
     if (specificPreviousVersion != null) {
