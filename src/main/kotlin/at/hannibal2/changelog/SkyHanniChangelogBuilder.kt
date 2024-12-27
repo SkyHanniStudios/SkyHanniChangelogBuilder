@@ -19,6 +19,9 @@ object SkyHanniChangelogBuilder {
     private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
     private val illegalStartPattern = "^[-=*+ ].*".toPattern()
 
+    private var lastFetchParams: Pair<WhatToFetch, ModVersion?>? = null
+    private var lastFetchResult: List<PullRequest>? = null
+
     private fun fetchPullRequests(whatToFetch: WhatToFetch): List<PullRequest> {
         val url = "$GITHUB_API_URL/pulls?${whatToFetch.url}"
         val jsonString = Utils.getTextFromUrl(url).joinToString("\n")
@@ -60,14 +63,25 @@ object SkyHanniChangelogBuilder {
     }
 
     private fun getRelevantPrs(whatToFetch: WhatToFetch, specificPreviousVersion: ModVersion?): List<PullRequest> {
+        val currentParams = whatToFetch to specificPreviousVersion
+
+        if (currentParams == lastFetchParams) {
+            return lastFetchResult ?: emptyList()
+        }
+
         val foundPrs = fetchPullRequests(whatToFetch)
 
-        return if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
+        val relevantPrs = if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
             val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
             foundPrs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
         } else {
             foundPrs.filter { !it.draft }
         }
+
+        lastFetchParams = currentParams
+        lastFetchResult = relevantPrs
+
+        return relevantPrs
     }
 
     private data class ChangesResult(
