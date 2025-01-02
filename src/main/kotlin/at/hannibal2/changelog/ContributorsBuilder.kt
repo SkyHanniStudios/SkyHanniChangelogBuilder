@@ -48,7 +48,7 @@ object ContributorsBuilder {
                 }
             }
         }
-//    printNumbers(map)
+//    printNumbers(contributions)
         printFormatted(contributions.keys)
     }
 
@@ -66,6 +66,9 @@ object ContributorsBuilder {
             } else {
                 line.append(", ")
             }
+        }
+        if (line.isNotEmpty()) {
+            total.append(line)
         }
         println(" ")
         println(total)
