@@ -442,7 +442,7 @@ object SkyHanniChangelogBuilder {
 
             val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
             list.add("For more details, see the [full changelog](<$releaseLink>)")
-            val downloadLink = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-mc1.8.9-${version.asTag}.jar"
+            val downloadLink = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.8.9.jar"
             list.add("Download link: $downloadLink")
         }
 
