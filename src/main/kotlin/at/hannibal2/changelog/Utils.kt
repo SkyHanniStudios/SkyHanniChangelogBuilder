@@ -25,4 +25,14 @@ object Utils {
     }
 
     fun Date.offsetMinute() = Date(time + 60 * 1000)
+
+    const val LIST_SPLIT_TEXT = "--SPLIT--"
+
+    fun List<String>.countCharacters() = sumOf { it.length } + size - 1
+
+    fun List<String>.charactersSinceSplit(): Int {
+        val splitIndex = lastIndexOf(LIST_SPLIT_TEXT)
+        val sublist = if (splitIndex == -1) this else subList(splitIndex + 1, size)
+        return sublist.countCharacters()
+    }
 }

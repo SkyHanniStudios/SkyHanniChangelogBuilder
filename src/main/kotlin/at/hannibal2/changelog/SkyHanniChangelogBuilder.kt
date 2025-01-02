@@ -1,5 +1,7 @@
 package at.hannibal2.changelog
 
+import at.hannibal2.changelog.Utils.charactersSinceSplit
+import at.hannibal2.changelog.Utils.countCharacters
 import at.hannibal2.changelog.Utils.matchMatcher
 import at.hannibal2.changelog.Utils.offsetMinute
 import com.google.gson.GsonBuilder
@@ -9,7 +11,6 @@ object SkyHanniChangelogBuilder {
 
     private const val GITHUB_API_URL = "https://api.github.com/repos/hannibal002/SkyHanni"
     private const val GITHUB_URL = "https://github.com/hannibal002/SkyHanni"
-    private const val BORDER = "================================================================================="
     private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
@@ -19,15 +20,31 @@ object SkyHanniChangelogBuilder {
     private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
     private val illegalStartPattern = "^[-=*+ ].*".toPattern()
 
+    private var lastFetchParams: Pair<WhatToFetch, ModVersion?>? = null
+    private var lastFetchResult: List<PullRequest>? = null
+    private var currentTags: Array<Tag>? = null
+
     private fun fetchPullRequests(whatToFetch: WhatToFetch): List<PullRequest> {
         val url = "$GITHUB_API_URL/pulls?${whatToFetch.url}"
         val jsonString = Utils.getTextFromUrl(url).joinToString("\n")
         return gson.fromJson(jsonString, Array<PullRequest>::class.java).toList()
     }
 
-    private fun getDateOfMostRecentTag(specificPreviousVersion: UpdateVersion?): Pair<Date, Date> {
-        val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
-        val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
+    private fun getTags(): Array<Tag> {
+        return currentTags ?: run {
+            val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
+            val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
+            currentTags = tags
+            tags
+        }
+    }
+
+    private fun doesTagExist(tag: String): Boolean {
+        return getTags().any { it.name == tag }
+    }
+
+    private fun getDateOfMostRecentTag(specificPreviousVersion: ModVersion?): Pair<Date, Date> {
+        val tags = getTags()
 
         val (targetTag, previousTag) = if (specificPreviousVersion != null) {
             val tag = tags.firstOrNull { it.name == specificPreviousVersion.asTag }
@@ -58,34 +75,47 @@ object SkyHanniChangelogBuilder {
         }
     }
 
-    private fun filterOnlyRelevantPrs(
-        prs: List<PullRequest>,
-        specificPreviousVersion: UpdateVersion?
-    ): List<PullRequest> {
-        val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
-        return prs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
-    }
+    private fun getRelevantPrs(whatToFetch: WhatToFetch, specificPreviousVersion: ModVersion?): List<PullRequest> {
+        val currentParams = whatToFetch to specificPreviousVersion
 
-    fun generateChangelog(whatToFetch: WhatToFetch, version: UpdateVersion, specificPreviousVersion: UpdateVersion?) {
+        if (currentParams == lastFetchParams) {
+            return lastFetchResult ?: emptyList()
+        }
+
         val foundPrs = fetchPullRequests(whatToFetch)
+
         val relevantPrs = if (whatToFetch == WhatToFetch.ALREADY_MERGED) {
-            filterOnlyRelevantPrs(foundPrs, specificPreviousVersion)
+            val (dateOfTargetTag, dateOfPreviousTag) = getDateOfMostRecentTag(specificPreviousVersion)
+            foundPrs.filter { it.mergedAt != null && it.mergedAt < dateOfTargetTag && it.mergedAt > dateOfPreviousTag }
         } else {
             foundPrs.filter { !it.draft }
         }
 
-        val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
+        lastFetchParams = currentParams
+        lastFetchResult = relevantPrs
+
+        return relevantPrs
+    }
+
+    private data class ChangesResult(
+        val changes: List<CodeChange>,
+        val previousText: List<String>,
+        val summaryText: List<String>
+    )
+
+    private fun getAllChanges(prs: List<PullRequest>): ChangesResult {
+        val previousText = mutableListOf<String>()
+        val summaryText = mutableListOf<String>()
 
         val allChanges = mutableListOf<CodeChange>()
-
         var wrongPrNames = 0
         var wrongPrDescription = 0
         var donePrs = 0
         val excludedPrs = mutableListOf<String>()
 
-        println()
+        previousText.add("")
 
-        for (pullRequest in sortedPrs) {
+        for (pullRequest in prs) {
             val prBody = pullRequest.body?.lines() ?: emptyList()
             if (prBody.any { it == "exclude_from_changelog" || it == "ignore_from_changelog" }) {
                 excludedPrs.add(pullRequest.prInfo())
@@ -96,16 +126,16 @@ object SkyHanniChangelogBuilder {
             val titleErrors = findPullRequestNameErrors(pullRequest.title, changes)
 
             if (titleErrors.isNotEmpty()) {
-                println("PR has incorrect name: ${pullRequest.prInfo()}")
-                titleErrors.forEach { println("  - ${it.message}") }
-                println()
+                previousText.add("PR has incorrect name: ${pullRequest.prInfo()}")
+                titleErrors.forEach { previousText.add("  - ${it.message}") }
+                previousText.add("")
                 wrongPrNames++
             }
 
             if (changeErrors.isNotEmpty()) {
-                println("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { println("  - ${it.formatLine()}") }
-                println()
+                previousText.add("PR has errors: ${pullRequest.prInfo()}")
+                changeErrors.forEach { previousText.add("  - ${it.formatLine()}") }
+                previousText.add("")
                 wrongPrDescription++
                 continue
             }
@@ -114,20 +144,37 @@ object SkyHanniChangelogBuilder {
             donePrs++
         }
 
-        println()
-        excludedPrs.forEach { println("Excluded PR: $it") }
+        previousText.add("")
+
+        excludedPrs.forEach { previousText.add("Excluded PR: $it") }
+
+        summaryText.add("")
+        summaryText.add("Loaded ${prs.size} PRs to be processed for changelog")
+        summaryText.add("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
+        if (wrongPrNames > 0) summaryText.add("$wrongPrNames PRs had a wrong name")
+        if (wrongPrDescription > 0) summaryText.add("$wrongPrDescription PRs had a wrong description")
+        summaryText.add("Processed $donePrs PRs for changelog")
+        summaryText.add("Total changes found in these PRs: ${allChanges.size}")
+
+        return ChangesResult(allChanges, previousText, summaryText)
+    }
+
+    fun generateChangelog(whatToFetch: WhatToFetch, version: ModVersion, specificPreviousVersion: ModVersion?) {
+        val relevantPrs = getRelevantPrs(whatToFetch, specificPreviousVersion)
+        val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
+
+        val changesResult = getAllChanges(sortedPrs)
+        val allChanges = changesResult.changes
+        val previousText = changesResult.previousText
+        val summaryText = changesResult.summaryText
+
+        previousText.forEach { println(it) }
 
         for (type in TextOutputType.entries) {
-            printChangelog(allChanges, version, type)
+            getSpecificChangelog(allChanges, version, type)
         }
 
-        println()
-        println("Loaded ${sortedPrs.size} PRs to be processed for changelog")
-        println("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
-        if (wrongPrNames > 0) println("$wrongPrNames PRs had a wrong name")
-        if (wrongPrDescription > 0) println("$wrongPrDescription PRs had a wrong description")
-        println("Processed $donePrs PRs for changelog")
-        println("Total changes found in these PRs: ${allChanges.size}")
+        summaryText.forEach { println(it) }
     }
 
     fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
@@ -302,15 +349,36 @@ object SkyHanniChangelogBuilder {
         return errors
     }
 
-    // todo add indicators of where to copy paste if over 2000 characters
-    private fun printChangelog(changes: List<CodeChange>, version: UpdateVersion, type: TextOutputType) {
-        val text = generateChangelogText(changes, version, type)
+    /**
+     * To be used by gradle tasks to generate specific output types.
+     */
+    fun generateSpecificOutputType(modVersion: String, outputType: String): String {
+        val version = ModVersion.fromString(modVersion)
+        val type =
+            TextOutputType.getFromName(outputType) ?: throw IllegalArgumentException("Unknown output type: $outputType")
+
+        val previousVersion = if (doesTagExist(version.asTag)) version else null
+
+        val whatToFetch = WhatToFetch.ALREADY_MERGED
+        val relevantPrs = getRelevantPrs(whatToFetch, previousVersion)
+        val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
+
+        val changes = getAllChanges(sortedPrs).changes
+        return generateChangelogText(changes, version, type, true).joinToString("\n")
+    }
+
+    private const val START_DIFF = "```diff"
+    private const val END_DIFF = "```"
+    private const val BORDER = "================================================================================="
+
+    private fun getSpecificChangelog(changes: List<CodeChange>, version: ModVersion, type: TextOutputType) {
+        val text = generateChangelogText(changes, version, type, false)
 
         println("")
         println("Output type: $type")
 
         if (type != TextOutputType.GITHUB) {
-            val totalLength = text.sumOf { it.length } + text.size - 1
+            val totalLength = text.countCharacters()
             println("$totalLength/2000 characters used")
         }
         println(BORDER)
@@ -321,10 +389,15 @@ object SkyHanniChangelogBuilder {
     // todo add unit tests for this output
     private fun generateChangelogText(
         changes: List<CodeChange>,
-        version: UpdateVersion,
-        type: TextOutputType
+        version: ModVersion,
+        type: TextOutputType,
+        displaySplits: Boolean,
     ): List<String> {
         val list = mutableListOf<String>()
+        val showWhereToSplit = displaySplits && type != TextOutputType.GITHUB
+        val startDiff = if (type == TextOutputType.DISCORD_PUBLIC) START_DIFF else null
+        val endDiff = if (type == TextOutputType.DISCORD_PUBLIC) END_DIFF else null
+
         list.add("## ${version.asTitle}")
 
         for (category in PullRequestCategory.entries) {
@@ -333,22 +406,40 @@ object SkyHanniChangelogBuilder {
             val relevantChanges = changes.filter { it.category == category }.sortedBy { it.text.lowercase() }
             if (relevantChanges.isEmpty()) continue
             list.add("### " + category.changelogName)
-            if (type == TextOutputType.DISCORD_PUBLIC) {
-                list.add("```diff")
-            }
+
+            startDiff?.let { list.add(it) }
+
             for (change in relevantChanges) {
                 val changePrefix = getPrefix(category, type)
-                list.add("$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim())
+                val changeText = "$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim()
+
+                if (showWhereToSplit && (list.charactersSinceSplit() + changeText.length) > 1950) {
+                    endDiff?.let { list.add(it) }
+                    list.add(Utils.LIST_SPLIT_TEXT)
+                    startDiff?.let { list.add(it) }
+                }
+
+                list.add(changeText)
                 for (extraInfo in change.extraInfo) {
-                    list.add("${type.extraInfoPrefix} $extraInfo")
+                    val extraInfoText = "${type.extraInfoPrefix} $extraInfo"
+
+                    if (showWhereToSplit && (list.charactersSinceSplit() + extraInfoText.length) > 1950) {
+                        endDiff?.let { list.add(it) }
+                        list.add(Utils.LIST_SPLIT_TEXT)
+                        startDiff?.let { list.add(it) }
+                    }
+
+                    list.add(extraInfoText)
                 }
             }
-            if (type == TextOutputType.DISCORD_PUBLIC) {
-                list.add("```")
-            }
+            endDiff?.let { list.add(it) }
         }
 
         if (type == TextOutputType.DISCORD_PUBLIC) {
+            if (showWhereToSplit && list.charactersSinceSplit() > 1750) {
+                list.add(Utils.LIST_SPLIT_TEXT)
+            }
+
             val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
             list.add("For more details, see the [full changelog](<$releaseLink>)")
             val downloadLink = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-mc1.8.9-${version.asTag}.jar"
@@ -396,6 +487,11 @@ enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeCha
     DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
     GITHUB("   +", { "(${it.prLink})" }),
     DISCORD_PUBLIC(" - ", { "" }),
+    ;
+
+    companion object {
+        fun getFromName(name: String) = entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
+    }
 }
 
 class CodeChange(val text: String, val category: PullRequestCategory, val prLink: String, val author: String) {
@@ -411,26 +507,8 @@ class ChangelogError(val message: String, private val relevantLine: String) {
 
 class PullRequestNameError(val message: String)
 
-// Not having a full version can be used for creating the changelog between the final beta and the full version
-class UpdateVersion(fullVersion: String, betaVersion: String?) {
-    val asTitle = "Version $fullVersion${betaVersion?.let { " Beta $it" } ?: ""}"
-    val asTag = "$fullVersion${betaVersion?.let { ".Beta.$it" } ?: ""}"
-
-    constructor(versionString: String) : this(extractVersion(versionString).first, extractVersion(versionString).second)
-
-    companion object {
-        private fun extractVersion(versionString: String): Pair<String, String?> {
-            val split = versionString.split(",").map { it.trim() }
-            val fullVersion = if (split[0].startsWith("0.")) split[0] else "0.${split[0]}"
-            val betaVersion = split.getOrNull(1)
-            return fullVersion to betaVersion
-        }
-    }
-}
-
 fun main() {
-    // todo maybe change the way version is handled
-    var version = UpdateVersion("0.28", "22")
+    var version = ModVersion(1, 0, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
@@ -440,11 +518,10 @@ fun main() {
      * Currently, this only works for recent versions, as the GitHub API only fetches the most recent 100 PRs unless
      * I make the code dig through all the pages.
      *
-     * Will be in the format of full version, beta version
+     * Does not work with legacy versions (0.x)
      */
-    // todo allow this to work with full versions
-    val specificPreviousVersion: UpdateVersion? = null
-//    val specificPreviousVersion: UpdateVersion? = UpdateVersion("0.28", "22")
+    val specificPreviousVersion: ModVersion? = null
+//    val specificPreviousVersion: ModVersion? = ModVersion(1, 0, 0)
 
     var whatToFetch = WhatToFetch.ALREADY_MERGED
 
