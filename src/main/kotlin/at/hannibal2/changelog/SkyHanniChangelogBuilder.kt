@@ -57,8 +57,7 @@ object SkyHanniChangelogBuilder {
             val index = tags.indexOf(tag)
             tag to tags.getOrNull(index + 1)
         } else {
-            // todo change this back to first once there are some merged prs
-            tags[2] to null
+            tags.first() to null
         }
 
         val tagCommitUrl = targetTag.commit.url
