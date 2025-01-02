@@ -1,5 +1,7 @@
 package at.hannibal2.changelog
 
+import at.hannibal2.changelog.Utils.charactersSinceSplit
+import at.hannibal2.changelog.Utils.countCharacters
 import at.hannibal2.changelog.Utils.matchMatcher
 import at.hannibal2.changelog.Utils.offsetMinute
 import com.google.gson.GsonBuilder
@@ -9,7 +11,6 @@ object SkyHanniChangelogBuilder {
 
     private const val GITHUB_API_URL = "https://api.github.com/repos/hannibal002/SkyHanni"
     private const val GITHUB_URL = "https://github.com/hannibal002/SkyHanni"
-    private const val BORDER = "================================================================================="
     private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
@@ -21,6 +22,7 @@ object SkyHanniChangelogBuilder {
 
     private var lastFetchParams: Pair<WhatToFetch, ModVersion?>? = null
     private var lastFetchResult: List<PullRequest>? = null
+    private var currentTags: Array<Tag>? = null
 
     private fun fetchPullRequests(whatToFetch: WhatToFetch): List<PullRequest> {
         val url = "$GITHUB_API_URL/pulls?${whatToFetch.url}"
@@ -28,9 +30,21 @@ object SkyHanniChangelogBuilder {
         return gson.fromJson(jsonString, Array<PullRequest>::class.java).toList()
     }
 
+    private fun getTags(): Array<Tag> {
+        return currentTags ?: run {
+            val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
+            val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
+            currentTags = tags
+            tags
+        }
+    }
+
+    private fun doesTagExist(tag: String): Boolean {
+        return getTags().any { it.name == tag }
+    }
+
     private fun getDateOfMostRecentTag(specificPreviousVersion: ModVersion?): Pair<Date, Date> {
-        val jsonString = Utils.getTextFromUrl("$GITHUB_API_URL/tags").joinToString("\n")
-        val tags = gson.fromJson(jsonString, Array<Tag>::class.java)
+        val tags = getTags()
 
         val (targetTag, previousTag) = if (specificPreviousVersion != null) {
             val tag = tags.firstOrNull { it.name == specificPreviousVersion.asTag }
@@ -44,7 +58,7 @@ object SkyHanniChangelogBuilder {
             tag to tags.getOrNull(index + 1)
         } else {
             // todo change this back to first once there are some merged prs
-            tags[1] to null
+            tags[2] to null
         }
 
         val tagCommitUrl = targetTag.commit.url
@@ -339,30 +353,33 @@ object SkyHanniChangelogBuilder {
     /**
      * To be used by gradle tasks to generate specific output types.
      */
-    fun generateSpecificOutputType(modVersion: String, outputType: String, alreadyReleased: Boolean): String {
+    fun generateSpecificOutputType(modVersion: String, outputType: String): String {
         val version = ModVersion.fromString(modVersion)
         val type =
             TextOutputType.getFromName(outputType) ?: throw IllegalArgumentException("Unknown output type: $outputType")
 
-        val previousVersion = if (alreadyReleased) version else null
+        val previousVersion = if (doesTagExist(version.asTag)) version else null
 
         val whatToFetch = WhatToFetch.ALREADY_MERGED
         val relevantPrs = getRelevantPrs(whatToFetch, previousVersion)
         val sortedPrs = relevantPrs.sortedBy(whatToFetch.sort)
 
         val changes = getAllChanges(sortedPrs).changes
-        return generateChangelogText(changes, version, type).joinToString("\n")
+        return generateChangelogText(changes, version, type, true).joinToString("\n")
     }
 
-    // todo add indicators of where to copy paste if over 2000 characters
+    private const val START_DIFF = "```diff"
+    private const val END_DIFF = "```"
+    private const val BORDER = "================================================================================="
+
     private fun getSpecificChangelog(changes: List<CodeChange>, version: ModVersion, type: TextOutputType) {
-        val text = generateChangelogText(changes, version, type)
+        val text = generateChangelogText(changes, version, type, false)
 
         println("")
         println("Output type: $type")
 
         if (type != TextOutputType.GITHUB) {
-            val totalLength = text.sumOf { it.length } + text.size - 1
+            val totalLength = text.countCharacters()
             println("$totalLength/2000 characters used")
         }
         println(BORDER)
@@ -374,9 +391,14 @@ object SkyHanniChangelogBuilder {
     private fun generateChangelogText(
         changes: List<CodeChange>,
         version: ModVersion,
-        type: TextOutputType
+        type: TextOutputType,
+        displaySplits: Boolean,
     ): List<String> {
         val list = mutableListOf<String>()
+        val showWhereToSplit = displaySplits && type != TextOutputType.GITHUB
+        val startDiff = if (type == TextOutputType.DISCORD_PUBLIC) START_DIFF else null
+        val endDiff = if (type == TextOutputType.DISCORD_PUBLIC) END_DIFF else null
+
         list.add("## ${version.asTitle}")
 
         for (category in PullRequestCategory.entries) {
@@ -385,19 +407,37 @@ object SkyHanniChangelogBuilder {
             val relevantChanges = changes.filter { it.category == category }.sortedBy { it.text.lowercase() }
             if (relevantChanges.isEmpty()) continue
             list.add("### " + category.changelogName)
-            if (type == TextOutputType.DISCORD_PUBLIC) {
-                list.add("```diff")
-            }
+
+            startDiff?.let { list.add(it) }
+
             for (change in relevantChanges) {
                 val changePrefix = getPrefix(category, type)
-                list.add("$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim())
+                val changeText = "$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim()
+
+                if (showWhereToSplit && (list.charactersSinceSplit() + changeText.length) > 1950) {
+                    endDiff?.let { list.add(it) }
+                    list.add(Utils.LIST_SPLIT_TEXT)
+                    startDiff?.let { list.add(it) }
+                }
+
+                list.add(changeText)
                 for (extraInfo in change.extraInfo) {
-                    list.add("${type.extraInfoPrefix} $extraInfo")
+                    val extraInfoText = "${type.extraInfoPrefix} $extraInfo"
+
+                    if (showWhereToSplit && (list.charactersSinceSplit() + extraInfoText.length) > 1950) {
+                        endDiff?.let { list.add(it) }
+                        list.add(Utils.LIST_SPLIT_TEXT)
+                        startDiff?.let { list.add(it) }
+                    }
+
+                    list.add(extraInfoText)
                 }
             }
-            if (type == TextOutputType.DISCORD_PUBLIC) {
-                list.add("```")
-            }
+            endDiff?.let { list.add(it) }
+        }
+
+        if (showWhereToSplit && list.charactersSinceSplit() > 1750) {
+            list.add(Utils.LIST_SPLIT_TEXT)
         }
 
         if (type == TextOutputType.DISCORD_PUBLIC) {
