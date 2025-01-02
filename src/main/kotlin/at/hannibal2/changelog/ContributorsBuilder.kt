@@ -38,6 +38,8 @@ object ContributorsBuilder {
                     names.addAll(name.split(" + "))
                 } else if (name.contains("/")) {
                     names.addAll(name.split("/"))
+                } else if (name.contains(" and ")) {
+                    names.addAll(name.split(" and "))
                 } else {
                     names.add(name)
                 }
