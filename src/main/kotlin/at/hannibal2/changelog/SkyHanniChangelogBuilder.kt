@@ -534,5 +534,6 @@ fun main() {
     SkyHanniChangelogBuilder.generateChangelog(whatToFetch, version, specificPreviousVersion)
 }
 
-// smart AI prompt for formatting
-// keep the formatting. just find typos and fix them in this changelog. also suggest slightly better wording if applicable. send me the whole text in one code block as output
+// smart ai prompt for formatting
+// I send you the changelog of a skyhanni version, a skyblock mod, below. do not touch the formatting, especially in the url/the name of the dev at the end of some lines.  do not make the sentences overly wording and try to compact it as mush as possible without losing information. additionally find typos/grammatical errors and fix them.  suggest better wording if applicable. keep the sentence beginning as "added", "fixed", etc. send me the whole text in one code block as output.
+
