@@ -508,7 +508,8 @@ class ChangelogError(val message: String, private val relevantLine: String) {
 class PullRequestNameError(val message: String)
 
 fun main() {
-    var version = ModVersion(1, 0, 0)
+    // stable, beta, bugfix
+    var version = ModVersion(1, 3, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,

@@ -1,6 +1,6 @@
 package at.hannibal2.changelog
 
-data class ModVersion(val major: Int, val minor: Int, val beta: Int) {
+data class ModVersion(val stable: Int, val beta: Int, val bugfix: Int) {
 
     companion object {
         fun fromString(version: String): ModVersion {
@@ -20,7 +20,7 @@ data class ModVersion(val major: Int, val minor: Int, val beta: Int) {
         get() = toString()
 
     override fun toString(): String {
-        return "$major.$minor.$beta"
+        return "$stable.$beta.$bugfix"
     }
 
     val asTitle = "Version $asString"
@@ -28,9 +28,9 @@ data class ModVersion(val major: Int, val minor: Int, val beta: Int) {
 
     operator fun compareTo(other: ModVersion): Int {
         return when {
-            major != other.major -> major.compareTo(other.major)
-            minor != other.minor -> minor.compareTo(other.minor)
-            else -> beta.compareTo(other.beta)
+            stable != other.stable -> stable.compareTo(other.stable)
+            beta != other.beta -> beta.compareTo(other.beta)
+            else -> bugfix.compareTo(other.bugfix)
         }
     }
 }
