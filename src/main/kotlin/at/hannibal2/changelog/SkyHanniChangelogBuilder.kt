@@ -398,7 +398,7 @@ object SkyHanniChangelogBuilder {
         val startDiff = if (type == TextOutputType.DISCORD_PUBLIC) START_DIFF else null
         val endDiff = if (type == TextOutputType.DISCORD_PUBLIC) END_DIFF else null
 
-        list.add("## ${version.asTitle}")
+        list.add("## SkyHanni ${version.asTitle}")
 
         for (category in PullRequestCategory.entries) {
             if (type == TextOutputType.DISCORD_PUBLIC && category == PullRequestCategory.INTERNAL) continue
@@ -509,7 +509,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(1, 3, 0)
+    var version = ModVersion(1, 4, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
