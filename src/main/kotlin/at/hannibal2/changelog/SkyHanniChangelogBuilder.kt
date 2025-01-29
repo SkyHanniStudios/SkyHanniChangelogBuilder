@@ -273,14 +273,6 @@ object SkyHanniChangelogBuilder {
         if (firstChar.isLowerCase()) {
             errors.add(ChangelogError("Change should start with a capital letter", text))
         }
-        if (!firstChar.isLetter()) {
-            errors.add(
-                ChangelogError(
-                    "Change should start with a letter instead of a number or special character",
-                    text
-                )
-            )
-        }
         val low = text.lowercase()
         if (low.startsWith("add ") || low.startsWith("adds ")) {
             errors.add(ChangelogError("Change should start with 'Added' instead of 'Add'", text))
@@ -428,7 +420,6 @@ object SkyHanniChangelogBuilder {
                         list.add(Utils.LIST_SPLIT_TEXT)
                         startDiff?.let { list.add(it) }
                     }
-
                     list.add(extraInfoText)
                 }
             }
@@ -509,7 +500,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(1, 6, 0)
+    var version = ModVersion(1, 9, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
