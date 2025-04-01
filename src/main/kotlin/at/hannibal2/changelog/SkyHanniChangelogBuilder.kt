@@ -149,11 +149,15 @@ object SkyHanniChangelogBuilder {
         excludedPrs.forEach { previousText.add("Excluded PR: $it") }
 
         summaryText.add("")
-        summaryText.add("Loaded ${prs.size} PRs to be processed for changelog")
-        summaryText.add("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
+        val total = prs.size
+        summaryText.add("Loaded $total PRs to be processed for changelog")
+        if (excludedPrs.size > 0) {
+            summaryText.add("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
+        }
         if (wrongPrNames > 0) summaryText.add("$wrongPrNames PRs had a wrong name")
         if (wrongPrDescription > 0) summaryText.add("$wrongPrDescription PRs had a wrong description")
-        summaryText.add("Processed $donePrs PRs for changelog")
+        val procesName = if (total == donePrs) "all" else "$donePrs/$total"
+        summaryText.add("Processed $procesName PRs for changelog")
         summaryText.add("Total changes found in these PRs: ${allChanges.size}")
 
         return ChangesResult(allChanges, previousText, summaryText)
@@ -279,9 +283,6 @@ object SkyHanniChangelogBuilder {
         }
         if (low.startsWith("fix ") || low.startsWith("fixes ")) {
             errors.add(ChangelogError("Change should start with 'Fixed' instead of 'Fix'", text))
-        }
-        if (low.startsWith("improve ") || low.startsWith("improves ")) {
-            errors.add(ChangelogError("Change should start with 'Improved' instead of 'Improve'", text))
         }
         if (low.startsWith("remove ") || low.startsWith("removes ")) {
             errors.add(ChangelogError("Change should start with 'Removed' instead of 'Remove'", text))
@@ -470,15 +471,16 @@ enum class PullRequestCategory(val changelogName: String, val prPrefix: String) 
 }
 
 enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
-    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=100", { it.mergedAt ?: Date(0) }),
+    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=100",
+        { it.mergedAt ?: Date(0) }),
     OPEN_PRS("state=open&sort=updated&direction=desc&per_page=100", { it.updatedAt }),
 }
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
     DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
     GITHUB("   +", { "(${it.prLink})" }),
-    DISCORD_PUBLIC(" - ", { "" }),
-    ;
+    // TODO change pr reference here, this is currently only a workaround
+    DISCORD_PUBLIC(" - ", { "" }), ;
 
     companion object {
         fun getFromName(name: String) = entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
@@ -500,7 +502,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(1, 9, 0)
+    var version = ModVersion(2, 8, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
@@ -527,5 +529,5 @@ fun main() {
 }
 
 // smart ai prompt for formatting
-// I send you the changelog of a skyhanni version, a skyblock mod, below. do not touch the formatting, especially in the url/the name of the dev at the end of some lines.  do not make the sentences overly wording and try to compact it as mush as possible without losing information. additionally find typos/grammatical errors and fix them.  suggest better wording if applicable. keep the sentence beginning as "added", "fixed", etc. send me the whole text in one code block as output.
+// I send you the changelog of a skyhanni version, a skyblock mod, below. do not touch the formatting, especially in the url/the name of the dev at the end of some lines.  do not make the sentences overly wording and try to compact it as mush as possible without losing information. additionally find typos/grammatical errors and fix them.  suggest better wording if applicable. keep the sentence beginning as "added", "fixed", etc. send me the whole text in one code block as output. Additionally, feature names are written with first letter uppercase, and lines withtout a author at the suffix describe the change above in more detaul, dont need the "added", "changed" etc, prefix theefore.
 
