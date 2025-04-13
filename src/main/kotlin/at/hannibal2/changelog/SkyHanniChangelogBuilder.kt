@@ -226,7 +226,7 @@ object SkyHanniChangelogBuilder {
                 illegalStartPattern.matchMatcher(text) {
                     errors.add(ChangelogError("Illegal start of change line", line))
                 }
-                errors.addAll(checkWording(text))
+                errors.addAll(checkWording(text, LineType.CHANGE))
 
                 currentChange = CodeChange(text, category, prLink, author).also { changes.add(it) }
                 continue@loop
@@ -238,7 +238,7 @@ object SkyHanniChangelogBuilder {
                 illegalStartPattern.matchMatcher(text) {
                     errors.add(ChangelogError("Illegal start of change line", line))
                 }
-                errors.addAll(checkWording(text))
+                errors.addAll(checkWording(text, LineType.CHANGE))
 
                 continue@loop
             }
@@ -256,7 +256,7 @@ object SkyHanniChangelogBuilder {
                 illegalStartPattern.matchMatcher(text) {
                     errors.add(ChangelogError("Illegal start of extra info line", line))
                 }
-                errors.addAll(checkWording(text))
+                errors.addAll(checkWording(text, LineType.EXTRA_INFO))
 
                 change.extraInfo.add(text)
                 continue@loop
@@ -271,24 +271,27 @@ object SkyHanniChangelogBuilder {
         return changes to errors
     }
 
-    private fun checkWording(text: String): List<ChangelogError> {
+    private fun checkWording(text: String, type: LineType): List<ChangelogError> {
         val errors = mutableListOf<ChangelogError>()
         val firstChar = text.first()
         if (firstChar.isLowerCase()) {
-            errors.add(ChangelogError("Change should start with a capital letter", text))
+            errors.add(ChangelogError("$type should start with a capital letter", text))
         }
         val low = text.lowercase()
         if (low.startsWith("add ") || low.startsWith("adds ")) {
-            errors.add(ChangelogError("Change should start with 'Added' instead of 'Add'", text))
+            errors.add(ChangelogError("$type should start with 'Added' instead of 'Add'", text))
         }
         if (low.startsWith("fix ") || low.startsWith("fixes ")) {
-            errors.add(ChangelogError("Change should start with 'Fixed' instead of 'Fix'", text))
+            errors.add(ChangelogError("$type should start with 'Fixed' instead of 'Fix'", text))
         }
         if (low.startsWith("remove ") || low.startsWith("removes ")) {
-            errors.add(ChangelogError("Change should start with 'Removed' instead of 'Remove'", text))
+            errors.add(ChangelogError("$type should start with 'Removed' instead of 'Remove'", text))
         }
         if (!text.endsWith('.')) {
-            errors.add(ChangelogError("Change should end with a full stop", text))
+            errors.add(ChangelogError("$type should end with a full stop", text))
+        }
+        if (text.contains("`")) {
+            errors.add(ChangelogError("$type should not contain backticks", text))
         }
 
         return errors
@@ -451,6 +454,16 @@ object SkyHanniChangelogBuilder {
             PullRequestCategory.INTERNAL -> ""
             PullRequestCategory.REMOVAL -> "-"
         }
+    }
+}
+
+private enum class LineType(val displayName: String) {
+    CHANGE("Change"),
+    EXTRA_INFO("Extra info"),
+    CATEGORY("Category"),
+    ;
+    override fun toString(): String {
+        return displayName
     }
 }
 

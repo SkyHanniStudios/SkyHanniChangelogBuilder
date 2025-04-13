@@ -170,8 +170,24 @@ class SkyHanniChangelogBuilderTest {
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
-        assertTrue(errors.size == 1, "Expected no errors")
+        assertTrue(errors.size == 1, "Expected one error")
         assertEquals("Unexpected empty line after category declared", errors[0].message)
+    }
+
+    @Test
+    fun `test body with backticks`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "+ Added new feature to `MainClass`. - John Doe",
+            "    * More info with `backticks`.",
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+
+        assertTrue(errors.size == 2, "Expected two errors")
+        assertEquals("Change should not contain backticks", errors[0].message)
+        assertEquals("Extra info should not contain backticks", errors[1].message)
     }
 
     @Test
