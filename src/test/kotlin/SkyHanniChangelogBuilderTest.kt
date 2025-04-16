@@ -175,22 +175,6 @@ class SkyHanniChangelogBuilderTest {
     }
 
     @Test
-    fun `test body with backticks`() {
-        val prBody = listOf(
-            "## Changelog New Features",
-            "+ Added new feature to `MainClass`. - John Doe",
-            "    * More info with `backticks`.",
-        )
-        val prLink = "https://example.com/pr/1"
-
-        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
-
-        assertTrue(errors.size == 2, "Expected two errors")
-        assertEquals("Change should not contain backticks", errors[0].message)
-        assertEquals("Extra info should not contain backticks", errors[1].message)
-    }
-
-    @Test
     fun `test title with correct pull request title`() {
         val prTitle = "Feature + Fix: New feature"
         val prLink = "https://example.com/pr/1"

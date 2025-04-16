@@ -290,9 +290,6 @@ object SkyHanniChangelogBuilder {
         if (!text.endsWith('.')) {
             errors.add(ChangelogError("$type should end with a full stop", text))
         }
-        if (text.contains("`")) {
-            errors.add(ChangelogError("$type should not contain backticks", text))
-        }
 
         return errors
     }
