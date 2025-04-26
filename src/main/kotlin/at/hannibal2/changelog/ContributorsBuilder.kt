@@ -68,7 +68,7 @@ object ContributorsBuilder {
             }
         }
         if (line.isNotEmpty()) {
-            total.append(line)
+            total.append(line.removeSuffix(", "))
         }
         println(" ")
         println(total)
