@@ -487,7 +487,7 @@ enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
 }
 
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
-    DISCORD_INTERNAL(" = ", { "[PR](<${it.prLink}>)" }),
+    DISCORD_INTERNAL("  - ", { "[PR](<${it.prLink}>)" }),
     GITHUB("   +", { "(${it.prLink})" }),
     // TODO change pr reference here, this is currently only a workaround
     DISCORD_PUBLIC(" - ", { "" }), ;
@@ -512,7 +512,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(3, 0, 0)
+    var version = ModVersion(3, 5, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
