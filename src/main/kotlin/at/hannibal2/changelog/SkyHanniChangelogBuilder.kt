@@ -434,8 +434,11 @@ object SkyHanniChangelogBuilder {
 
             val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
             list.add("For more details, see the [full changelog](<$releaseLink>)")
-            val downloadLink = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.8.9.jar"
-            list.add("Download link: $downloadLink")
+            list.add("Downloads:")
+            val forge189Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.8.9.jar"
+            list.add("- [Forge 1.8.9]($forge189Link)")
+            val fabric1215Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.5.jar"
+            list.add("- [Fabric 1.21.5]($fabric1215Link)")
         }
 
         return list
@@ -512,7 +515,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(3, 5, 0)
+    var version = ModVersion(4, 1, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
@@ -525,7 +528,7 @@ fun main() {
      * Does not work with legacy versions (0.x)
      */
     val specificPreviousVersion: ModVersion? = null
-//    val specificPreviousVersion: ModVersion? = ModVersion(1, 0, 0)
+//    val specificPreviousVersion: ModVersion? = ModVersion(3, 18, 0)
 
     var whatToFetch = WhatToFetch.ALREADY_MERGED
 
