@@ -216,7 +216,7 @@ object SkyHanniChangelogBuilder {
             val category = currentCategory ?: continue
 
             changePattern.matchMatcher(line) {
-                val text = group("text").trim()
+                val text = group("text").trim().replace("\"", "")
                 val author = group("author").trim()
 
                 if (author == "your_name_here") {
@@ -515,7 +515,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(4, 1, 0)
+    var version = ModVersion(4, 2, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
@@ -541,6 +541,6 @@ fun main() {
     SkyHanniChangelogBuilder.generateChangelog(whatToFetch, version, specificPreviousVersion)
 }
 
-// smart ai prompt for formatting
+// smart AI prompt for formatting
 // I send you the changelog of a skyhanni version, a skyblock mod, below. do not touch the formatting, especially in the url/the name of the dev at the end of some lines.  do not make the sentences overly wording and try to compact it as mush as possible without losing information. additionally find typos/grammatical errors and fix them.  suggest better wording if applicable. keep the sentence beginning as "added", "fixed", etc. send me the whole text in one code block as output. Additionally, feature names are written with first letter uppercase, and lines withtout a author at the suffix describe the change above in more detaul, dont need the "added", "changed" etc, prefix theefore.
 
