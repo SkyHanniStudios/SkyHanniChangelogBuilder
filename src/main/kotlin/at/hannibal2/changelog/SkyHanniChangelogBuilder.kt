@@ -440,7 +440,7 @@ object SkyHanniChangelogBuilder {
             val fabric1215Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.5.jar"
             list.add("- [Fabric 1.21.5]($fabric1215Link)")
             val fabric1217Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.7.jar"
-            list.add("- [Fabric 1.21.7]($fabric1217Link)")
+            list.add("- [Fabric 1.21.7 & 1.21.8]($fabric1217Link)")
         }
 
         return list
@@ -517,7 +517,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(4, 3, 0)
+    var version = ModVersion(4, 7, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
