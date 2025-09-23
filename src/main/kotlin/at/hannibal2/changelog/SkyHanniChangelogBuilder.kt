@@ -115,7 +115,7 @@ object SkyHanniChangelogBuilder {
 
         previousText.add("")
 
-        val notPartOfChangelog = Regex("^(?:ignore|exclude)_from_changelog$")
+        val notPartOfChangelog = Regex("^(?:ignore|exclude|not_a_part)_from_changelog$")
         for (pullRequest in prs) {
             val prBody = pullRequest.body?.lines().orEmpty()
             if (prBody.any { notPartOfChangelog.matches(it.trim()) }) {
