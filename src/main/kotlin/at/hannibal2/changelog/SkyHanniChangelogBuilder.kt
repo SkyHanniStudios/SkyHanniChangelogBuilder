@@ -115,9 +115,10 @@ object SkyHanniChangelogBuilder {
 
         previousText.add("")
 
+        val notPartOfChangelog = Regex("^(?:ignore|exclude)_from_changelog$")
         for (pullRequest in prs) {
-            val prBody = pullRequest.body?.lines() ?: emptyList()
-            if (prBody.any { it == "exclude_from_changelog" || it == "ignore_from_changelog" }) {
+            val prBody = pullRequest.body?.lines().orEmpty()
+            if (prBody.any { notPartOfChangelog.matches(it.trim()) }) {
                 excludedPrs.add(pullRequest.prInfo())
                 continue
             }
@@ -517,7 +518,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(4, 9, 0)
+    var version = ModVersion(4, 20, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
