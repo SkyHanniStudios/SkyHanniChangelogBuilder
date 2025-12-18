@@ -12,7 +12,7 @@ import java.awt.datatransfer.DataFlavor
 
 object ContributorsBuilder {
 
-    private val contributionPattern = "\\+ .*\\. - (?<name>.*) \\(.*\\)".toPattern()
+    private val contributionPattern = "\\+ .*\\. - (?<name>.*) \\(.*\\)(?: \\+ .*)?".toPattern()
 
     fun getContributors(text: String) {
 
