@@ -152,13 +152,13 @@ object SkyHanniChangelogBuilder {
         summaryText.add("")
         val total = prs.size
         summaryText.add("Loaded $total PRs to be processed for changelog")
-        if (excludedPrs.size > 0) {
+        if (excludedPrs.isNotEmpty()) {
             summaryText.add("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
         }
         if (wrongPrNames > 0) summaryText.add("$wrongPrNames PRs had a wrong name")
         if (wrongPrDescription > 0) summaryText.add("$wrongPrDescription PRs had a wrong description")
-        val procesName = if (total == donePrs) "all" else "$donePrs/$total"
-        summaryText.add("Processed $procesName PRs for changelog")
+        val processName = if (total == donePrs) "all" else "$donePrs/$total"
+        summaryText.add("Processed $processName PRs for changelog")
         summaryText.add("Total changes found in these PRs: ${allChanges.size}")
 
         return ChangesResult(allChanges, previousText, summaryText)
@@ -344,7 +344,7 @@ object SkyHanniChangelogBuilder {
     }
 
     /**
-     * To be used by gradle tasks to generate specific output types.
+     * To be used by Gradle tasks to generate specific output types.
      */
     fun generateSpecificOutputType(modVersion: String, outputType: String): String {
         val version = ModVersion.fromString(modVersion)
@@ -394,6 +394,13 @@ object SkyHanniChangelogBuilder {
 
         list.add("## SkyHanni ${version.asTitle}")
 
+        fun split(changeText: String) {
+            if (!showWhereToSplit || (list.charactersSinceSplit() + changeText.length) <= 1950) return
+            endDiff?.let { list.add(it) }
+            list.add(Utils.LIST_SPLIT_TEXT)
+            startDiff?.let { list.add(it) }
+        }
+
         for (category in PullRequestCategory.entries) {
             if (type == TextOutputType.DISCORD_PUBLIC && category == PullRequestCategory.INTERNAL) continue
 
@@ -407,21 +414,13 @@ object SkyHanniChangelogBuilder {
                 val changePrefix = getPrefix(category, type)
                 val changeText = "$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim()
 
-                if (showWhereToSplit && (list.charactersSinceSplit() + changeText.length) > 1950) {
-                    endDiff?.let { list.add(it) }
-                    list.add(Utils.LIST_SPLIT_TEXT)
-                    startDiff?.let { list.add(it) }
-                }
+                split(changeText)
 
                 list.add(changeText)
                 for (extraInfo in change.extraInfo) {
                     val extraInfoText = "${type.extraInfoPrefix} $extraInfo"
 
-                    if (showWhereToSplit && (list.charactersSinceSplit() + extraInfoText.length) > 1950) {
-                        endDiff?.let { list.add(it) }
-                        list.add(Utils.LIST_SPLIT_TEXT)
-                        startDiff?.let { list.add(it) }
-                    }
+                    split(extraInfoText)
                     list.add(extraInfoText)
                 }
             }
@@ -443,7 +442,8 @@ object SkyHanniChangelogBuilder {
             list.add("- [Fabric 1.21.5]($fabric1215Link)")
             val fabric1217Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.8.jar"
             list.add("- [Fabric 1.21.8]($fabric1217Link)")
-            val fabric12110Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.10.jar"
+            val fabric12110Link =
+                "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.10.jar"
             list.add("- [Fabric 1.21.10]($fabric12110Link)")
         }
 
@@ -468,6 +468,7 @@ private enum class LineType(val displayName: String) {
     EXTRA_INFO("Extra info"),
     CATEGORY("Category"),
     ;
+
     override fun toString(): String {
         return displayName
     }
@@ -490,7 +491,8 @@ enum class PullRequestCategory(val changelogName: String, val prPrefix: String) 
 }
 
 enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
-    ALREADY_MERGED("state=closed&sort=updated&direction=desc&per_page=100",
+    ALREADY_MERGED(
+        "state=closed&sort=updated&direction=desc&per_page=100",
         { it.mergedAt ?: Date(0) }),
     OPEN_PRS("state=open&sort=updated&direction=desc&per_page=100", { it.updatedAt }),
 }
@@ -498,6 +500,7 @@ enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
 enum class TextOutputType(val extraInfoPrefix: String, val prReference: (CodeChange) -> String) {
     DISCORD_INTERNAL("  - ", { "[PR](<${it.prLink}>)" }),
     GITHUB("   +", { "(${it.prLink})" }),
+
     // TODO change pr reference here, this is currently only a workaround
     DISCORD_PUBLIC(" - ", { "" }), ;
 
@@ -547,6 +550,15 @@ fun main() {
     SkyHanniChangelogBuilder.generateChangelog(whatToFetch, version, specificPreviousVersion)
 }
 
-// smart AI prompt for formatting
-// I send you the changelog of a skyhanni version, a skyblock mod, below. do not touch the formatting, especially in the url/the name of the dev at the end of some lines.  do not make the sentences overly wording and try to compact it as mush as possible without losing information. additionally find typos/grammatical errors and fix them.  suggest better wording if applicable. keep the sentence beginning as "added", "fixed", etc. send me the whole text in one code block as output. Additionally, feature names are written with first letter uppercase, and lines withtout a author at the suffix describe the change above in more detaul, dont need the "added", "changed" etc, prefix theefore.
+/*
 
+smart AI prompt for formatting
+
+Fix typos, grammar, and phrasing issues in this SkyHanni changelog. Keep formatting intact (URLs, dev names, structure). Feature names use uppercase first letters. Sublines without author describe the line above and don't need "Added"/"Fixed" prefix. Keep wording compact without losing information.
+
+Output format for changes only:
+old line
+what changed
+new line
+
+*/
