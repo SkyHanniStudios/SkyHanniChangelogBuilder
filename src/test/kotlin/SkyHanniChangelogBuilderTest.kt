@@ -251,4 +251,24 @@ class SkyHanniChangelogBuilderTest {
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
         assertEquals("PR title must include category 'Fix' if there are any fixes in the PR", pullRequestTitleErrors[0].message)
     }
+
+    @Test
+    fun `test different formatting tokens`() {
+        val prBody = listOf(
+            "## Changelog Technical Details",
+            "+ Backend change with a plus. - Author",
+            "   * More info with tab and asterisk.",
+            "  + More info with 2 spaces and plus.",
+            "- Backend change with a minus. - Author",
+            "    - More info with 4 spaces and minus.",
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+
+        println("changes: ${changes.map { it.text }}")
+        println("errors: ${errors.map { it.message }}")
+
+        assertTrue(errors.isEmpty(), "Expected no errors")
+    }
 }
