@@ -266,9 +266,6 @@ class SkyHanniChangelogBuilderTest {
 
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
-        println("changes: ${changes.map { it.text }}")
-        println("errors: ${errors.map { it.message }}")
-
         assertTrue(errors.isEmpty(), "Expected no errors")
     }
 }
