@@ -257,7 +257,7 @@ class SkyHanniChangelogBuilderTest {
         val prBody = listOf(
             "## Changelog Technical Details",
             "+ Backend change with a plus. - Author",
-            "   * More info with tab and asterisk.",
+            "\t* More info with tab and asterisk.",
             "  + More info with 2 spaces and plus.",
             "- Backend change with a minus. - Author",
             "    - More info with 4 spaces and minus.",
