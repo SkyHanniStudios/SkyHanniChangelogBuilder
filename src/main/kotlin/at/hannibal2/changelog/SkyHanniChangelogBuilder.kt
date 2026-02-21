@@ -14,9 +14,23 @@ object SkyHanniChangelogBuilder {
     private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
-    private val changePattern = "\\+ (?<text>.+?) - (?<author>.+)".toPattern()
-    private val changePatternNoAuthor = "\\+ (?<text>.+)".toPattern()
-    private val extraInfoPattern = " {4}\\* (?<text>.+)".toPattern()
+
+    /**
+     * REGEX-TEST: + Change. - Author
+     * REGEX-TEST: - Change. - Author
+     * REGEX-TEST: * Change. - Author
+     */
+    private val changePattern = "^[*+-] (?<text>.+?) - (?<author>.+)".toPattern()
+    private val changePatternNoAuthor = "^[*+-] (?<text>.+)".toPattern()
+
+    /**
+     * REGEX-TEST:     * Extra info
+     * REGEX-TEST:     + Extra info
+     * REGEX-TEST: 	- Extra info
+     * REGEX-TEST:   + Extra info
+     * REGEX-TEST:   - Extra info
+     */
+    private val extraInfoPattern = "(?: {2,4}|\\t)[*+-] (?<text>.+)".toPattern()
     private val prTitlePattern = "(?<prefix>.+): (?<title>.+)".toPattern()
     private val illegalStartPattern = "^[-=*+ ].*".toPattern()
 
