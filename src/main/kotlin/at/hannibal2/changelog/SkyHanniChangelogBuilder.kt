@@ -449,16 +449,12 @@ object SkyHanniChangelogBuilder {
             val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
             list.add("For more details, see the [full changelog](<$releaseLink>)")
             list.add("Downloads:")
-            // uncomment if 1.8.9 stable release
-            // val forge189Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.8.9.jar"
-            // list.add("- [Forge 1.8.9]($forge189Link)")
-            val fabric1215Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.5.jar"
-            list.add("- [Fabric 1.21.5]($fabric1215Link)")
-            val fabric1217Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.8.jar"
-            list.add("- [Fabric 1.21.8]($fabric1217Link)")
             val fabric12110Link =
                 "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.10.jar"
             list.add("- [Fabric 1.21.10]($fabric12110Link)")
+            val fabric12111Link =
+                "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.11.jar"
+            list.add("- [Fabric 1.21.11]($fabric12111Link)")
         }
 
         return list
@@ -538,7 +534,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(6, 0, 0)
+    var version = ModVersion(7, 1, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
