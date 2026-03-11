@@ -23,7 +23,7 @@ data class ModVersion(val stable: Int, val beta: Int, val bugfix: Int) {
         return "$stable.$beta.$bugfix"
     }
 
-    val asTitle = "${if (isBeta) "Beta" else "Stable"} $asString"
+    val asTitle = "${if (isBeta) "Beta" else "Stable"} ${asString.removeSuffix(".0")}"
     val asTag = asString
 
     operator fun compareTo(other: ModVersion): Int {
