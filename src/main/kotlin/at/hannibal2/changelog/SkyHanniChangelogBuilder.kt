@@ -449,12 +449,12 @@ object SkyHanniChangelogBuilder {
             val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
             list.add("For more details, see the [full changelog](<$releaseLink>)")
             list.add("Downloads:")
-            val fabric12110Link =
-                "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.10.jar"
-            list.add("- [Fabric 1.21.10]($fabric12110Link)")
             val fabric12111Link =
                 "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc1.21.11.jar"
             list.add("- [Fabric 1.21.11]($fabric12111Link)")
+            val fabric2612Link =
+                "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc26.1.jar"
+            list.add("- [Fabric 26.1.2]($fabric2612Link)")
         }
 
         return list
