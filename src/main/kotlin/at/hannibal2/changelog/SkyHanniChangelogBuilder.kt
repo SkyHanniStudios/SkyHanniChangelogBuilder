@@ -221,10 +221,10 @@ object SkyHanniChangelogBuilder {
 
                 currentCategory = PullRequestCategory.fromChangelogName(categoryName)
                 if (currentCategory == null) {
-                    val validCategories = PullRequestCategory.entries.joinToString { it.changelogName }
+                    val validCategories = PullRequestCategory.entries.joinToString("`, `") { it.changelogName }
                     errors.add(
                         ChangelogError(
-                            "Unknown category: '$categoryName', possible categories: $validCategories",
+                            "Unknown category: `$categoryName`, possible categories: `$validCategories`",
                             line
                         )
                     )
@@ -334,10 +334,11 @@ object SkyHanniChangelogBuilder {
 
             val foundCategories = prPrefixes.mapNotNull { prefix ->
                 PullRequestCategory.fromPrPrefix(prefix) ?: run {
+                    val validCategories = PullRequestCategory.validCategories().joinToString("`, `") { it }
                     errors.add(
                         PullRequestNameError(
-                            "Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
-                                    "and expected categories based on your changes are: $expectedOptions"
+                            "Unknown category: `$prefix`, valid categories are: $validCategories\n" +
+                                    "Expected categories based on your changes are: `$expectedOptions`"
                         )
                     )
                     null
@@ -502,7 +503,7 @@ enum class PullRequestCategory(val changelogName: String, val prPrefix: String) 
         fun fromChangelogName(changelogName: String) = entries.firstOrNull { it.changelogName == changelogName }
         fun fromPrPrefix(prPrefix: String) = entries.firstOrNull { it.prPrefix == prPrefix }
 
-        fun validCategories() = entries.joinToString { it.prPrefix }
+        fun validCategories(): List<String> = entries.map { it.prPrefix }
     }
 }
 
