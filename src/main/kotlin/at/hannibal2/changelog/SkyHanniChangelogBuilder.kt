@@ -337,7 +337,7 @@ object SkyHanniChangelogBuilder {
                     val validCategories = PullRequestCategory.validCategories().joinToString("`, `") { it }
                     errors.add(
                         PullRequestNameError(
-                            "Unknown category: `$prefix`, valid categories are: $validCategories\n" +
+                            "Unknown category: `$prefix`, valid categories are: `$validCategories`\n" +
                                     "Expected categories based on your changes are: `$expectedOptions`"
                         )
                     )

@@ -199,7 +199,7 @@ class SkyHanniChangelogBuilderTest {
         assertEquals(1, pullRequestTitleErrors.size, "Expected one error")
         val validCats = PullRequestCategory.validCategories().joinToString("`, `") { it }
         assertEquals(
-            "Unknown category: `Bugfix`, valid categories are: $validCats\n" +
+            "Unknown category: `Bugfix`, valid categories are: `$validCats`\n" +
                     "Expected categories based on your changes are: `Feature, Fix, Backend`",
             pullRequestTitleErrors[0].message
         )
