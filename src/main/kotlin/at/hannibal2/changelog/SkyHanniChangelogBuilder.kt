@@ -222,7 +222,12 @@ object SkyHanniChangelogBuilder {
                 currentCategory = PullRequestCategory.fromChangelogName(categoryName)
                 if (currentCategory == null) {
                     val validCategories = PullRequestCategory.entries.joinToString { it.changelogName }
-                    errors.add(ChangelogError("Unknown category: '$categoryName', possible categories: $validCategories", line))
+                    errors.add(
+                        ChangelogError(
+                            "Unknown category: '$categoryName', possible categories: $validCategories",
+                            line
+                        )
+                    )
                 }
                 currentChange = null
 

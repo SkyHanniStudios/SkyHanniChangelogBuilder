@@ -63,7 +63,8 @@ class SkyHanniChangelogBuilderTest {
         val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
 
         assertTrue(errors.isNotEmpty(), "Expected errors")
-        assertEquals("Unknown category: UnknownCategory", errors[0].message)
+        val validCategories = PullRequestCategory.entries.joinToString { it.changelogName }
+        assertEquals("Unknown category: 'UnknownCategory', possible categories: $validCategories", errors[0].message)
     }
 
     @Test
