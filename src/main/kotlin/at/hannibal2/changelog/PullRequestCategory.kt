@@ -12,6 +12,6 @@ enum class PullRequestCategory(val changelogName: String, val prPrefix: String) 
         fun fromChangelogName(changelogName: String) = entries.firstOrNull { it.changelogName == changelogName }
         fun fromPrPrefix(prPrefix: String) = entries.firstOrNull { it.prPrefix == prPrefix }
 
-        fun validCategories() = entries.joinToString { it.prPrefix }
+        fun validCategories(): List<String> = entries.map { it.prPrefix }
     }
 }

@@ -221,7 +221,13 @@ object SkyHanniChangelogBuilder {
 
                 currentCategory = PullRequestCategory.fromChangelogName(categoryName)
                 if (currentCategory == null) {
-                    errors.add(ChangelogError("Unknown category: $categoryName", line))
+                    val validCategories = PullRequestCategory.entries.joinToString("`, `") { it.changelogName }
+                    errors.add(
+                        ChangelogError(
+                            "Unknown category: `$categoryName`, possible categories: `$validCategories`",
+                            line
+                        )
+                    )
                 }
                 currentChange = null
 
@@ -328,10 +334,11 @@ object SkyHanniChangelogBuilder {
 
             val foundCategories = prPrefixes.mapNotNull { prefix ->
                 PullRequestCategory.fromPrPrefix(prefix) ?: run {
+                    val validCategories = PullRequestCategory.validCategories().joinToString("`, `") { it }
                     errors.add(
                         PullRequestNameError(
-                            "Unknown category: '$prefix', valid categories are: ${PullRequestCategory.validCategories()} " +
-                                    "and expected categories based on your changes are: $expectedOptions"
+                            "Unknown category: `$prefix`, valid categories are: `$validCategories`\n" +
+                                    "Expected categories based on your changes are: `$expectedOptions`"
                         )
                     )
                     null
