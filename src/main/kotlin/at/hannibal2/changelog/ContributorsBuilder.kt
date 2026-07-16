@@ -12,9 +12,10 @@ import java.awt.datatransfer.DataFlavor
 
 object ContributorsBuilder {
 
+    private val categoryPattern = "### (?<category>.*)".toPattern()
     private val contributionPattern = "\\+ .*\\. - (?<name>.*) \\(.*\\)(?: \\+ .*)?".toPattern()
 
-    fun getContributors(text: String) {
+    fun processChangelog(text: String) {
 
         // Remove sub-categories and fix unnecessary break points
         val content = text.split("\n")
@@ -23,9 +24,21 @@ object ContributorsBuilder {
             .replace("\n  ", " ")
             .replace("  ", " ")
 
+        val changes = mutableMapOf<PullRequestCategory, Int>()
+        var currentCategory = PullRequestCategory.FEATURE
+
         val contributions = mutableMapOf<String, Int>()
 
         for (line in content.split("\n")) {
+            categoryPattern.matchMatcher(line) {
+                val categoryName = group("category")
+                val newCategory = PullRequestCategory.fromChangelogName(categoryName)
+                if (newCategory == null) {
+                    println("unknown new category in line: $line")
+                } else {
+                    currentCategory = newCategory
+                }
+            }
 
             contributionPattern.matchMatcher(line) {
                 val name = group("name")
@@ -46,13 +59,24 @@ object ContributorsBuilder {
                 for (oneName in names) {
                     contributions[oneName] = contributions.getOrDefault(oneName, 0) + 1
                 }
+                changes[currentCategory] = (changes[currentCategory] ?: 0) + 1
             }
         }
 //    printNumbers(contributions)
-        printFormatted(contributions.keys)
+        printFormattedChanges(changes)
+        printFormattedContributors(contributions.keys)
     }
 
-    private fun printFormatted(names: MutableSet<String>) {
+    private fun printFormattedChanges(changes: MutableMap<PullRequestCategory, Int>) {
+        println("")
+        print("In addition to the **${changes[PullRequestCategory.FEATURE]} new features**, ")
+        print("there were **${changes[PullRequestCategory.IMPROVEMENT]} minor improvements**, ")
+        print("**${changes[PullRequestCategory.FIX]} bug fixes**, ")
+        print("and **${changes[PullRequestCategory.INTERNAL]} technical changes**. ")
+        print("See the full changelog on GitHub for details.")
+    }
+
+    private fun printFormattedContributors(names: MutableSet<String>) {
         println("")
         val sorted = names.map { it to it.lowercase() }.sortedBy { it.second }.map { it.first }
         val line = StringBuilder()
@@ -88,5 +112,5 @@ fun main() {
         println("clipboard empty")
         return
     }
-    ContributorsBuilder.getContributors(clipboard)
+    ContributorsBuilder.processChangelog(clipboard)
 }

@@ -484,22 +484,6 @@ private enum class LineType(val displayName: String) {
     }
 }
 
-enum class PullRequestCategory(val changelogName: String, val prPrefix: String) {
-    FEATURE("New Features", "Feature"),
-    IMPROVEMENT("Improvements", "Improvement"),
-    FIX("Fixes", "Fix"),
-    INTERNAL("Technical Details", "Backend"),
-    REMOVAL("Removed Features", "Remove"),
-    ;
-
-    companion object {
-        fun fromChangelogName(changelogName: String) = entries.firstOrNull { it.changelogName == changelogName }
-        fun fromPrPrefix(prPrefix: String) = entries.firstOrNull { it.prPrefix == prPrefix }
-
-        fun validCategories() = entries.joinToString { it.prPrefix }
-    }
-}
-
 enum class WhatToFetch(val url: String, val sort: (PullRequest) -> Date) {
     ALREADY_MERGED(
         "state=closed&sort=updated&direction=desc&per_page=100",
@@ -534,7 +518,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(7, 1, 0)
+    var version = ModVersion(7, 33, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
