@@ -13,7 +13,7 @@ import java.awt.datatransfer.DataFlavor
 object ContributorsBuilder {
 
     private val categoryPattern = "### (?<category>.*)".toPattern()
-    private val contributionPattern = "\\+ .*\\. - (?<name>.*) \\(.*\\)(?: \\+ .*)?".toPattern()
+    private val contributionPattern = "\\+ .*\\. - (?<contributorNames>.*) \\(.*\\)(?: \\+ .*)?".toPattern()
 
     fun processChangelog(text: String) {
 
@@ -41,23 +41,10 @@ object ContributorsBuilder {
             }
 
             contributionPattern.matchMatcher(line) {
-                val name = group("name")
-                val names = mutableListOf<String>()
-                if (name.contains(", ")) {
-                    names.addAll(name.split(", "))
-                } else if (name.contains(" & ")) {
-                    names.addAll(name.split(" & "))
-                } else if (name.contains(" + ")) {
-                    names.addAll(name.split(" + "))
-                } else if (name.contains("/")) {
-                    names.addAll(name.split("/"))
-                } else if (name.contains(" and ")) {
-                    names.addAll(name.split(" and "))
-                } else {
-                    names.add(name)
-                }
-                for (oneName in names) {
-                    contributions[oneName] = contributions.getOrDefault(oneName, 0) + 1
+                val contributorNames = group("contributorNames")
+                val names = contributorNames.split(Regex(", | & | \\+ |/| and "))
+                for (name in names) {
+                    contributions[name] = contributions.getOrDefault(name, 0) + 1
                 }
                 changes[currentCategory] = (changes[currentCategory] ?: 0) + 1
             }
