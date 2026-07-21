@@ -270,7 +270,7 @@ object SkyHanniChangelogBuilder {
                 }
                 val change = currentChange ?: continue@loop
                 val text = group("text").trim()
-                if (text == "Extra info.") {
+                if (text == "Optional extra info.") {
                     errors.add(ChangelogError("Extra info is not filled out", line))
                 }
 
