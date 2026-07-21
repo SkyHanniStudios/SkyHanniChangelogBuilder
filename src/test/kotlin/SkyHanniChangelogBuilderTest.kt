@@ -72,7 +72,7 @@ class SkyHanniChangelogBuilderTest {
         val prBody = listOf(
             "## Changelog New Features",
             "+ Added new feature. - your_name_here",
-            "    * Extra info."
+            "    * Optional extra info."
         )
         val prLink = "https://example.com/pr/1"
 
