@@ -84,6 +84,25 @@ class SkyHanniChangelogBuilderTest {
     }
 
     @Test
+    fun `test body with feature change missing extra info`() {
+        val prBody = listOf(
+            "## Changelog New Features",
+            "+ Added new feature. - John Doe",
+        )
+        val prLink = "https://example.com/pr/1"
+
+        val (changes, errors) = SkyHanniChangelogBuilder.findChanges(prBody, prLink)
+
+        assertEquals(1, errors.size, "Expected one error")
+        assertEquals(
+            "Feature change is missing a description. " +
+                    "Add a sub-line to explain the feature in more detail. " +
+                    "Tip: the description of the feature's enabled config option works well here.",
+            errors[0].message
+        )
+    }
+
+    @Test
     fun `test body with illegal start`() {
         val prBody = listOf(
             "## Changelog New Features",
