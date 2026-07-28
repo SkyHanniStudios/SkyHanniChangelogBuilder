@@ -452,7 +452,9 @@ object SkyHanniChangelogBuilder {
 
                 list.add(changeText)
                 for (extraInfo in change.extraInfo) {
-                    val extraInfoText = "${type.extraInfoPrefix} $extraInfo"
+                    val processedExtraInfo =
+                        if (type == TextOutputType.DISCORD_PUBLIC) extraInfo.stripLink() else extraInfo
+                    val extraInfoText = "${type.extraInfoPrefix} $processedExtraInfo"
 
                     split(extraInfoText)
                     list.add(extraInfoText)
@@ -479,6 +481,8 @@ object SkyHanniChangelogBuilder {
 
         return list
     }
+
+    private fun String.stripLink() = replace(Regex("""\[([^\]]+)]\([^)]+\)"""), "$1")
 
     private fun getPrefix(category: PullRequestCategory, type: TextOutputType): String = when (type) {
         TextOutputType.DISCORD_INTERNAL -> "-"
