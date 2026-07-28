@@ -286,6 +286,19 @@ object SkyHanniChangelogBuilder {
             errors.add(ChangelogError("Unknown line after changes started being declared", line))
         }
 
+        for (change in changes) {
+            if (change.category == PullRequestCategory.FEATURE && change.extraInfo.isEmpty()) {
+                errors.add(
+                    ChangelogError(
+                        "Feature change is missing a description. " +
+                                "Add a sub-line to explain the feature in more detail. " +
+                                "Tip: the description of the feature's enabled config option works well here.",
+                        change.text
+                    )
+                )
+            }
+        }
+
         if (changes.isEmpty() && errors.isEmpty()) {
             errors.add(ChangelogError("No changes detected in this pull request", ""))
         }
