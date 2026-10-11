@@ -9,8 +9,8 @@ import java.util.*
 
 object SkyHanniChangelogBuilder {
 
-    private const val GITHUB_API_URL = "https://api.github.com/repos/hannibal002/SkyHanni"
-    private const val GITHUB_URL = "https://github.com/hannibal002/SkyHanni"
+    private const val GITHUB_API_URL = "https://api.github.com/repos/SkyHanniStudios/SkyHanni"
+    private const val GITHUB_URL = "https://github.com/SkyHanniStudios/SkyHanni"
     private val gson by lazy { GsonBuilder().setPrettyPrinting().create() }
 
     private val categoryPattern = "## Changelog (?<category>.+)".toPattern()
