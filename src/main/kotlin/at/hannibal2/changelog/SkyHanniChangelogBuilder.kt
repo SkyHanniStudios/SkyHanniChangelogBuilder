@@ -529,7 +529,7 @@ class PullRequestNameError(val message: String)
 
 fun main() {
     // stable, beta, bugfix
-    var version = ModVersion(7, 33, 0)
+    var version = ModVersion(9, 2, 0)
 
     /**
      * If you want to generate a changelog for a specific previous version,
