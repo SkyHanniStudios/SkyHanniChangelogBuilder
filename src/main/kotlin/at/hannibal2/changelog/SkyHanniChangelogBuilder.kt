@@ -118,16 +118,12 @@ object SkyHanniChangelogBuilder {
     )
 
     private fun getAllChanges(prs: List<PullRequest>): ChangesResult {
-        val previousText = mutableListOf<String>()
-        val summaryText = mutableListOf<String>()
-
+        val previousText = mutableListOf("")
         val allChanges = mutableListOf<CodeChange>()
         var wrongPrNames = 0
         var wrongPrDescription = 0
         var donePrs = 0
         val excludedPrs = mutableListOf<String>()
-
-        previousText.add("")
 
         val notPartOfChangelog = Regex("^(?:ignore|exclude|not_a_part)_from_changelog$")
         for (pullRequest in prs) {
@@ -141,16 +137,12 @@ object SkyHanniChangelogBuilder {
             val titleErrors = findPullRequestNameErrors(pullRequest.title, changes)
 
             if (titleErrors.isNotEmpty()) {
-                previousText.add("PR has incorrect name: ${pullRequest.prInfo()}")
-                titleErrors.forEach { previousText.add("  - ${it.message}") }
-                previousText.add("")
+                previousText.addErrorBlock("PR has incorrect name: ${pullRequest.prInfo()}", titleErrors.map { it.message })
                 wrongPrNames++
             }
 
             if (changeErrors.isNotEmpty()) {
-                previousText.add("PR has errors: ${pullRequest.prInfo()}")
-                changeErrors.forEach { previousText.add("  - ${it.formatLine()}") }
-                previousText.add("")
+                previousText.addErrorBlock("PR has errors: ${pullRequest.prInfo()}", changeErrors.map { it.formatLine() })
                 wrongPrDescription++
                 continue
             }
@@ -160,22 +152,43 @@ object SkyHanniChangelogBuilder {
         }
 
         previousText.add("")
-
         excludedPrs.forEach { previousText.add("Excluded PR: $it") }
 
-        summaryText.add("")
-        val total = prs.size
-        summaryText.add("Loaded $total PRs to be processed for changelog")
-        if (excludedPrs.isNotEmpty()) {
-            summaryText.add("Excluded ${excludedPrs.size} of these PRs because they were marked as `exclude_from_changelog`")
-        }
-        if (wrongPrNames > 0) summaryText.add("$wrongPrNames PRs had a wrong name")
-        if (wrongPrDescription > 0) summaryText.add("$wrongPrDescription PRs had a wrong description")
-        val processName = if (total == donePrs) "all" else "$donePrs/$total"
-        summaryText.add("Processed $processName PRs for changelog")
-        summaryText.add("Total changes found in these PRs: ${allChanges.size}")
-
+        val summaryText = buildSummaryText(
+            total = prs.size,
+            excluded = excludedPrs.size,
+            wrongPrNames = wrongPrNames,
+            wrongPrDescription = wrongPrDescription,
+            donePrs = donePrs,
+            totalChanges = allChanges.size,
+        )
         return ChangesResult(allChanges, previousText, summaryText)
+    }
+
+    private fun MutableList<String>.addErrorBlock(header: String, errors: List<String>) {
+        add(header)
+        errors.forEach { add("  - $it") }
+        add("")
+    }
+
+    private fun buildSummaryText(
+        total: Int,
+        excluded: Int,
+        wrongPrNames: Int,
+        wrongPrDescription: Int,
+        donePrs: Int,
+        totalChanges: Int,
+    ): List<String> = buildList {
+        add("")
+        add("Loaded $total PRs to be processed for changelog")
+        if (excluded > 0) {
+            add("Excluded $excluded of these PRs because they were marked as `exclude_from_changelog`")
+        }
+        if (wrongPrNames > 0) add("$wrongPrNames PRs had a wrong name")
+        if (wrongPrDescription > 0) add("$wrongPrDescription PRs had a wrong description")
+        val processName = if (total == donePrs) "all" else "$donePrs/$total"
+        add("Processed $processName PRs for changelog")
+        add("Total changes found in these PRs: $totalChanges")
     }
 
     fun generateChangelog(whatToFetch: WhatToFetch, version: ModVersion, specificPreviousVersion: ModVersion?) {
@@ -197,99 +210,106 @@ object SkyHanniChangelogBuilder {
     }
 
     fun findChanges(prBody: List<String>, prLink: String): Pair<List<CodeChange>, List<ChangelogError>> {
-        val changes = mutableListOf<CodeChange>()
-        val errors = mutableListOf<ChangelogError>()
+        val parser = ChangeParser(prLink)
+        prBody.forEach { parser.parseLine(it) }
+        return parser.result()
+    }
 
-        var currentCategory: PullRequestCategory? = null
-        var currentChange: CodeChange? = null
+    private class ChangeParser(private val prLink: String) {
+        private val changes = mutableListOf<CodeChange>()
+        private val errors = mutableListOf<ChangelogError>()
+        private var currentCategory: PullRequestCategory? = null
+        private var currentChange: CodeChange? = null
 
-        loop@ for (line in prBody) {
-            if (line.isBlank()) {
+        fun parseLine(line: String) {
+            if (handleBlankLine(line) || handleCategoryLine(line)) return
+            val category = currentCategory ?: return
+            if (handleChangeLine(line, category)) return
+            if (handleChangeLineWithoutAuthor(line) || handleExtraInfoLine(line)) return
+            errors.add(ChangelogError("Unknown line after changes started being declared", line))
+        }
 
-                if (currentCategory != null && currentChange == null) {
-                    println("erroring on line")
-                    errors.add(ChangelogError("Unexpected empty line after category declared", line))
-                }
-
-                currentCategory = null
-                currentChange = null
-                continue
+        fun result(): Pair<List<CodeChange>, List<ChangelogError>> {
+            if (changes.isEmpty() && errors.isEmpty()) {
+                errors.add(ChangelogError("No changes detected in this pull request", ""))
             }
+            return changes to errors
+        }
 
+        private fun handleBlankLine(line: String): Boolean {
+            if (!line.isBlank()) return false
+            if (currentCategory != null && currentChange == null) {
+                errors.add(ChangelogError("Unexpected empty line after category declared", line))
+            }
+            currentCategory = null
+            currentChange = null
+            return true
+        }
+
+        private fun handleCategoryLine(line: String): Boolean {
             categoryPattern.matchMatcher(line) {
                 val categoryName = group("category")
-
                 currentCategory = PullRequestCategory.fromChangelogName(categoryName)
                 if (currentCategory == null) {
                     val validCategories = PullRequestCategory.entries.joinToString("`, `") { it.changelogName }
                     errors.add(
-                        ChangelogError(
-                            "Unknown category: `$categoryName`, possible categories: `$validCategories`",
-                            line
-                        )
+                        ChangelogError("Unknown category: `$categoryName`, possible categories: `$validCategories`", line)
                     )
                 }
                 currentChange = null
-
-                continue@loop
+                return true
             }
+            return false
+        }
 
-            val category = currentCategory ?: continue
-
+        private fun handleChangeLine(line: String, category: PullRequestCategory): Boolean {
             changePattern.matchMatcher(line) {
                 val text = group("text").trim().replace("\"", "")
                 val author = group("author").trim()
-
                 if (author == "your_name_here") {
                     errors.add(ChangelogError("Author is not set", line))
                 }
-
-                illegalStartPattern.matchMatcher(text) {
-                    errors.add(ChangelogError("Illegal start of change line", line))
-                }
-                errors.addAll(checkWording(text, LineType.CHANGE))
-
+                checkLineText(text, line, LineType.CHANGE)
                 currentChange = CodeChange(text, category, prLink, author).also { changes.add(it) }
-                continue@loop
+                return true
             }
+            return false
+        }
+
+        private fun handleChangeLineWithoutAuthor(line: String): Boolean {
             changePatternNoAuthor.matchMatcher(line) {
                 val text = group("text").trim()
                 errors.add(ChangelogError("Author is not set", line))
-
-                illegalStartPattern.matchMatcher(text) {
-                    errors.add(ChangelogError("Illegal start of change line", line))
-                }
-                errors.addAll(checkWording(text, LineType.CHANGE))
-
-                continue@loop
+                checkLineText(text, line, LineType.CHANGE)
+                return true
             }
+            return false
+        }
 
+        private fun handleExtraInfoLine(line: String): Boolean {
             extraInfoPattern.matchMatcher(line) {
-                if (currentChange == null) {
+                val change = currentChange
+                if (change == null) {
                     errors.add(ChangelogError("Extra info without a change", line))
+                    return true
                 }
-                val change = currentChange ?: continue@loop
                 val text = group("text").trim()
                 if (text == "Optional extra info.") {
                     errors.add(ChangelogError("Extra info is not filled out", line))
                 }
-
-                illegalStartPattern.matchMatcher(text) {
-                    errors.add(ChangelogError("Illegal start of extra info line", line))
-                }
-                errors.addAll(checkWording(text, LineType.EXTRA_INFO))
-
+                checkLineText(text, line, LineType.EXTRA_INFO)
                 change.extraInfo.add(text)
-                continue@loop
+                return true
             }
-
-            errors.add(ChangelogError("Unknown line after changes started being declared", line))
+            return false
         }
 
-        if (changes.isEmpty() && errors.isEmpty()) {
-            errors.add(ChangelogError("No changes detected in this pull request", ""))
+        private fun checkLineText(text: String, line: String, type: LineType) {
+            illegalStartPattern.matchMatcher(text) {
+                errors.add(ChangelogError("Illegal start of ${type.displayName.lowercase()} line", line))
+            }
+            errors.addAll(checkWording(text, type))
         }
-        return changes to errors
     }
 
     private fun checkWording(text: String, type: LineType): List<ChangelogError> {
@@ -316,52 +336,58 @@ object SkyHanniChangelogBuilder {
     }
 
     fun findPullRequestNameErrors(prTitle: String, changes: List<CodeChange>): List<PullRequestNameError> {
+        if (changes.isEmpty()) return emptyList()
+
+        val prefixText = prTitlePattern.matchMatcher(prTitle) { group("prefix") }
+            ?: return listOf(PullRequestNameError("PR title does not match the expected format of 'Category: Title'"))
+
         val errors = mutableListOf<PullRequestNameError>()
-        if (changes.isEmpty()) {
-            return errors
+        if (prefixText.contains("/") || prefixText.contains("&")) {
+            errors.add(PullRequestNameError("PR categories shouldn't be separated by '/' or '&', use ' + ' instead"))
         }
 
-        prTitlePattern.matchMatcher(prTitle) {
-            val prefixText = group("prefix")
+        val prPrefixes = prefixText.split(Regex("[+&/]")).map { it.trim() }
+        val expectedCategories = changes.map { it.category }.toSet()
+        val expectedOptions = expectedCategories.joinToString { it.prPrefix }
 
-            if (prefixText.contains("/") || prefixText.contains("&")) {
-                errors.add(PullRequestNameError("PR categories shouldn't be separated by '/' or '&', use ' + ' instead"))
-            }
-
-            val prPrefixes = prefixText.split(Regex("[+&/]")).map { it.trim() }
-            val expectedCategories = changes.map { it.category }.toSet()
-            val expectedOptions = expectedCategories.joinToString { it.prPrefix }
-
-            val foundCategories = prPrefixes.mapNotNull { prefix ->
-                PullRequestCategory.fromPrPrefix(prefix) ?: run {
-                    val validCategories = PullRequestCategory.validCategories().joinToString("`, `") { it }
-                    errors.add(
-                        PullRequestNameError(
-                            "Unknown category: `$prefix`, valid categories are: `$validCategories`\n" +
-                                    "Expected categories based on your changes are: `$expectedOptions`"
-                        )
-                    )
-                    null
-                }
-            }
-
-            foundCategories.forEach { category ->
-                if (category !in expectedCategories) {
-                    errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
-                }
-            }
-
-            val fix = PullRequestCategory.FIX
-
-            if (errors.isEmpty() && fix in expectedCategories && fix !in foundCategories) {
-                errors.add(PullRequestNameError("PR title must include category 'Fix' if there are any fixes in the PR"))
-            }
-
-            return errors
-        }
-
-        errors.add(PullRequestNameError("PR title does not match the expected format of 'Category: Title'"))
+        val foundCategories = parsePrefixCategories(prPrefixes, expectedOptions, errors)
+        checkCategoryMismatch(foundCategories, expectedCategories, expectedOptions, errors)
         return errors
+    }
+
+    private fun parsePrefixCategories(
+        prPrefixes: List<String>,
+        expectedOptions: String,
+        errors: MutableList<PullRequestNameError>,
+    ): List<PullRequestCategory> = prPrefixes.mapNotNull { prefix ->
+        PullRequestCategory.fromPrPrefix(prefix) ?: run {
+            val validCategories = PullRequestCategory.validCategories().joinToString("`, `") { it }
+            errors.add(
+                PullRequestNameError(
+                    "Unknown category: `$prefix`, valid categories are: `$validCategories`\n" +
+                            "Expected categories based on your changes are: `$expectedOptions`"
+                )
+            )
+            null
+        }
+    }
+
+    private fun checkCategoryMismatch(
+        foundCategories: List<PullRequestCategory>,
+        expectedCategories: Set<PullRequestCategory>,
+        expectedOptions: String,
+        errors: MutableList<PullRequestNameError>,
+    ) {
+        foundCategories.forEach { category ->
+            if (category !in expectedCategories) {
+                errors.add(PullRequestNameError("PR has category '${category.prPrefix}' which is not in the changelog. Expected categories: $expectedOptions"))
+            }
+        }
+
+        val fix = PullRequestCategory.FIX
+        if (errors.isEmpty() && fix in expectedCategories && fix !in foundCategories) {
+            errors.add(PullRequestNameError("PR title must include category 'Fix' if there are any fixes in the PR"))
+        }
     }
 
     /**
@@ -430,43 +456,41 @@ object SkyHanniChangelogBuilder {
             list.add("### " + category.changelogName)
 
             startDiff?.let { list.add(it) }
-
-            for (change in relevantChanges) {
-                val changePrefix = getPrefix(category, type)
-                val changeText = "$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim()
-
-                split(changeText)
-
-                list.add(changeText)
-                for (extraInfo in change.extraInfo) {
-                    val processedExtraInfo =
-                        if (type == TextOutputType.DISCORD_PUBLIC) extraInfo.stripLink() else extraInfo
-                    val extraInfoText = "${type.extraInfoPrefix} $processedExtraInfo"
-
-                    split(extraInfoText)
-                    list.add(extraInfoText)
-                }
+            for (text in relevantChanges.flatMap { formatChangeLines(it, category, type) }) {
+                split(text)
+                list.add(text)
             }
             endDiff?.let { list.add(it) }
         }
 
         if (type == TextOutputType.DISCORD_PUBLIC) {
-            if (showWhereToSplit && list.charactersSinceSplit() > 1750) {
-                list.add(Utils.LIST_SPLIT_TEXT)
-            }
+            addDiscordPublicFooter(list, version, showWhereToSplit)
+        }
+        return list
+    }
 
-            val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
-            list.add("For more details, see the [full changelog](<$releaseLink>)")
-            list.add("Downloads:")
-            val fabric2612Link =
-                "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc26.1.jar"
-            list.add("- [Fabric 26.1.2]($fabric2612Link)")
-            val fabric262Link =
-                "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc26.2.jar"
-            list.add("- [Fabric 26.2]($fabric262Link)")
+    private fun formatChangeLines(change: CodeChange, category: PullRequestCategory, type: TextOutputType): List<String> {
+        val changePrefix = getPrefix(category, type)
+        val changeText = "$changePrefix ${change.text} - ${change.author} ${type.prReference(change)}".trim()
+        val extraInfoTexts = change.extraInfo.map { extraInfo ->
+            val processedExtraInfo = if (type == TextOutputType.DISCORD_PUBLIC) extraInfo.stripLink() else extraInfo
+            "${type.extraInfoPrefix} $processedExtraInfo"
+        }
+        return listOf(changeText) + extraInfoTexts
+    }
+
+    private fun addDiscordPublicFooter(list: MutableList<String>, version: ModVersion, showWhereToSplit: Boolean) {
+        if (showWhereToSplit && list.charactersSinceSplit() > 1750) {
+            list.add(Utils.LIST_SPLIT_TEXT)
         }
 
-        return list
+        val releaseLink = "$GITHUB_URL/releases/tag/${version.asTag}"
+        list.add("For more details, see the [full changelog](<$releaseLink>)")
+        list.add("Downloads:")
+        val fabric2612Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc26.1.jar"
+        list.add("- [Fabric 26.1.2]($fabric2612Link)")
+        val fabric262Link = "$GITHUB_URL/releases/download/${version.asTag}/SkyHanni-${version.asTag}-mc26.2.jar"
+        list.add("- [Fabric 26.2]($fabric262Link)")
     }
 
     private fun String.stripLink() = replace(Regex("""\[([^\]]+)]\([^)]+\)"""), "$1")
